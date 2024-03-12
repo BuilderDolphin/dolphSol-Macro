@@ -1,3 +1,5 @@
+; A testing tool - BuilderDolphin
+
 #singleinstance, force
 #noenv
 #persistent

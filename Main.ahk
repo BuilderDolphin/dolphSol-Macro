@@ -1,18 +1,23 @@
 ﻿; dolpSol Macro
 ;   A macro for Sol's RNG on Roblox
+;   GNU General Public License
 ;   Free for anyone to use
 ;   Modifications are welcome, however stealing credit is not
 ;   Hope you enjoy - BuilderDolphin
 ;   A "small" project started on 03/07/2024
-
+;   
+;   https://github.com/BuilderDolphin/dolphSol-Macro
+;   
+;   Feel free to provide any suggestions (through discord preferably, @builderdolphin). 
 
 #singleinstance, force
 #noenv
 #persistent
-SetWorkingDir, %A_ScriptDir%
+SetWorkingDir, % A_ScriptDir "\lib"
 CoordMode, Pixel, Screen
 CoordMode, Mouse, Screen
 
+#Include %A_ScriptDir%\lib
 #Include ocr.ahk
 #Include Gdip_All.ahk
 #Include Gdip_ImageSearch.ahk
@@ -31,7 +36,7 @@ obbyStatusEffectColor := 0x9CFFAC
 
 statusEffectSpace := 5
 
-RegExMatch(A_ScriptDir,"(.*)\\",mainDir)
+mainDir := A_ScriptDir "\"
 
 configPath := mainDir . "settings\config.ini"
 
@@ -51,10 +56,23 @@ global options := {"DoingObby":1
     ,"WindowY":100
     ,"VIP":0
     ,"ExtraAlignment":1
+    ,"ReconnectEnabled":1
     ,"AutoEquipEnabled":0
     ,"AutoEquipX":-0.415
     ,"AutoEquipY":-0.438
-    ,"PrivateServerId":""}
+    ,"PrivateServerId":""
+    ,"WebhookEnabled":0
+    ,"WebhookLink":""
+    ,"StatusBarEnabled":0
+    ,"WasRunning":0
+    ; ,"WebhookInvScreenshotEnabled":1 ; one day maybe when i figure out how to do discord screenshots
+    ; ,"WebhookInvScreenshotInterval":60
+    ; not really options but stats i guess
+    ,"RunTime":0
+    ,"Disconnects":0
+    ,"ObbyCompletes":0
+    ,"ObbyAttempts":0
+    ,"CollectionLoops":0}
 
 global privateServerPre := "https://www.roblox.com/games/15532962292/Sols-RNG?privateServerLinkCode="
 
@@ -123,12 +141,44 @@ saveOptions(){
 }
 saveOptions()
 
-possibleDowns := ["w","a","s","d","Space","Enter","Esc","r"]
+webhookPost(content := "", title := "", color := "1"){
+    url := options.WebhookLink
+    formattedTitle := ""
+    if (title){
+        formattedTitle = 
+        (
+            "title": "%title%",
+        )
+    }
+
+    postdata =
+    (
+    {
+    "embeds": [
+        {
+        %formattedTitle%
+        "description": "%content%",
+        "color": %color%
+        }
+    ]
+    }
+    ) ; Use https://leovoel.github.io/embed-visualizer/ to generate above webhook code
+    WebRequest := ComObjCreate("WinHttp.WinHttpRequest.5.1")
+    WebRequest.Open("POST", url, false)
+    WebRequest.SetRequestHeader("Content-Type", "application/json")
+    WebRequest.SetProxy(false)
+    WebRequest.Send(postdata)   
+}
+
+global possibleDowns := ["w","a","s","d","Space","Enter","Esc","r"]
 
 stop(terminate := 0) {
-    global possibleDowns
     for i,v in possibleDowns {
         Send {%v% Up}
+    }
+
+    if (terminate){
+        options.WasRunning := 0
     }
 
     applyNewUIOptions()
@@ -138,6 +188,34 @@ stop(terminate := 0) {
         OutputDebug, Terminated
         ExitApp
     }
+}
+
+global pauseDowns := []
+global paused := 0
+
+handlePause(){
+    if (paused){
+        applyNewUIOptions()
+        saveOptions()
+        updateUIOptions()
+
+        WinActivate, Roblox
+        for i,v in pauseDowns {
+            Send {%v% Down}
+        }
+    } else {
+        pauseDowns := []
+        for i,v in possibleDowns {
+            state := GetKeyState(v)
+            if (state){
+                pauseDowns.Push(v)
+                Send {%v% Up}
+            }
+        }
+        updateUIOptions()
+        Gui mainUI:Show
+    }
+    paused := !paused
 }
 
 global regWalkFactor := 1.25 ; since i made the paths all with vip, normalize
@@ -171,11 +249,11 @@ jump() {
 ; main stuff
 
 global initialized := 0
-running := 0
+global running := 0
 
 initialize()
 {
-    initialized = 1
+    initialized := 1
     getRobloxPos(pX,pY,width,height)
     MouseMove, % pX + width*0.5, % pY + height*0.5
     Sleep, 300
@@ -187,7 +265,7 @@ initialize()
     }
     Loop 10 {
         Click, WheelDown
-        Sleep, 50
+        Sleep, 100
     }
 }
 
@@ -233,6 +311,7 @@ collect(num){
 }
 
 searchForItems(){
+    updateStatus("Searching for Items")
     ; item 1
     updateStatus("Searching for Items (#1)")
     press("a",4250)
@@ -305,6 +384,8 @@ searchForItems(){
     press("w",4100)
     press("a",300)
     collect(6)
+
+    options.CollectionLoops += 1
 }
 
 doObby(){
@@ -431,6 +512,7 @@ doObby(){
         walkSleep(200)
         Send {a Up}
     }
+    options.ObbyAttempts += 1
 }
 
 walkToObby(){
@@ -457,26 +539,42 @@ obbyRun(){
 
 mouseActions(){
     updateStatus("Performing Mouse Actions")
-    ; re equip good
+
+    getRobloxPos(pX,pY,width,height)
+
+    ; re equip
     if (options.AutoEquipEnabled){
-        clickMenuButton(1)
-        Sleep, 50
+        PixelGetColor, chatCheck, % pX + 75, % pY + 12, RGB
+        if (compareColors(chatCheck,0xffffff) < 16){ ; is chat open??
+            MouseMove, % pX + 75, % pY + 12
+            Sleep, 300
+            MouseClick
+            Sleep, 100
+        }
+
+        checkPos := getStoragePositionFromUV(-1.209440, -0.695182)
+        PixelGetColor, checkC, % checkPos[1], % checkPos[2], RGB
+        alreadyOpen := compareColors(checkC,0xffffff) < 8
+
+        if (!alreadyOpen){
+            clickMenuButton(1)
+        }
+        Sleep, 100
         sPos := getStoragePositionFromUV(options.AutoEquipX,options.AutoEquipY)
         MouseMove, % sPos[1], % sPos[2]
         Sleep, 300
         MouseClick
-        Sleep, 50
+        Sleep, 100
         ePos := getStoragePositionFromUV(storageEquipUV[1],storageEquipUV[2])
         MouseMove, % ePos[1], % ePos[2]
         Sleep, 300
         MouseClick
-        Sleep, 50
+        Sleep, 100
         clickMenuButton(1)
     }
 
     Sleep, 250
 
-    getRobloxPos(pX,pY,width,height)
     MouseMove, % pX + width*0.5, % pY + height*0.5
     Sleep, 300
     MouseClick
@@ -514,6 +612,8 @@ checkHasObbyBuff(BRCornerX, BRCornerY, statusEffectHeight){
         PixelGetColor, color, targetX, targetY, RGB
         if (compareColors(color, obbyStatusEffectColor) < 16){
             hasObbyBuff := 1
+            options.ObbyCompletes += 1
+            updateStatus("Completed Obby")
             return 1
         }
     }  
@@ -675,9 +775,14 @@ attemptReconnect(failed := 0){
     if (reconnecting && !failed){
         return
     }
+    if (!options.ReconnectEnabled){
+        stop()
+        return
+    }
     reconnecting := 1
     success := 0
     closeRoblox()
+    updateStatus("Reconnecting")
     Sleep, 5000
     Loop 5 {
         Sleep, % (A_Index-1)*10000
@@ -696,6 +801,7 @@ attemptReconnect(failed := 0){
             }
             Sleep 1000
         }
+        updateStatus("Reconnecting, Roblox Opened")
         Sleep, 3000
         Loop 120 {
             getRobloxPos(pX,pY,width,height)
@@ -714,15 +820,17 @@ attemptReconnect(failed := 0){
             }
             Sleep 1000
         }
+        updateStatus("Reconnecting, Game Loaded")
         Sleep, 5000
         getRobloxPos(pX,pY,width,height)
         MouseMove, % pX + (width*0.6), % pY + (height*0.85)
         Sleep, 300
         MouseClick
-        Sleep, 50
+        Sleep, 100
         MouseMove, % pX + (width*0.35), % pY + (height*0.95)
         Sleep, 300
         MouseClick
+        updateStatus("Reconnect Complete")
         success := 1
         break
     }
@@ -733,8 +841,6 @@ attemptReconnect(failed := 0){
         attemptReconnect(1)
     }
 }
-
-global disconnectBitmap := Gdip_CreateBitmapFromFile(mainDir . "\images\disconnected.png")
 
 checkDisconnect(){
     getRobloxPos(windowX, windowY, windowWidth, windowHeight)
@@ -748,10 +854,13 @@ checkDisconnect(){
                 break
             }
         }
+        Gdip_DisposeBitmap(pBMScreen)
         if (matches < 64){
             return 0
         }
 	}
+    updateStatus("Roblox Disconnected")
+    options.Disconnects += 1
     return 1
 }
 
@@ -819,6 +928,7 @@ mainLoop(){
             hasBuff := hasBuff || checkHasObbyBuff(BRCornerX,BRCornerY,statusEffectHeight)
             if (!hasBuff)
             {
+                updateStatus("Obby Failed, Retrying")
                 lastObby := A_TickCount - obbyCooldown*1000
                 obbyRun()
                 hasBuff := checkHasObbyBuff(BRCornerX,BRCornerY,statusEffectHeight)
@@ -892,21 +1002,41 @@ Gui Add, CheckBox, vCollectSpot6CheckBox x242 y174 w30 h26 +0x2, % " 6"
 
 ; status tab
 Gui Tab, 2
+Gui Font, s10 w600
+Gui Add, GroupBox, x16 y40 w130 h170 vStatsGroup -Theme +0x50000007, Stats
+Gui Font, s9 norm
+Gui Add, Text, vStatsDisplay x22 y58 w118 h146, runtime: 123`ndisconnects: 1000
 
+Gui Font, s10 w600
+Gui Add, GroupBox, x151 y40 w200 h170 vWebhookGroup -Theme +0x50000007, Discord Webhook
+Gui Font, s9 norm
+Gui Add, CheckBox, vWebhookCheckBox x166 y63 w120 h16 +0x2 gEnableWebhookToggle, % " Enable Webhook"
+Gui Add, Text, x161 y85 w100 h20 vWebhookInputHeader BackgroundTrans, Webhook URL:
+Gui Add, Edit, x166 y105 w169 h20 vWebhookInput,% ""
+Gui Add, Button, gWebhookHelpClick vWebhookHelpButton x325 y50 w23 h23, ?
+; Gui Add, CheckBox, vWebhookInvScreenshotCheckBox x166 y135 w140 h16 +0x2, % " Inventory Screenshots"
+; Gui Add, Text, x180 y155 w140 h20 c555555 vWebhookInvScreenshotIntervalText BackgroundTrans, % "+ Every             minute(s)"
+; Gui Add, Edit, vWebhookInvScreenshotIntervalInput x224 y154 w30 h20, 60
+
+Gui Font, s10 w600
+Gui Add, GroupBox, x356 y40 w128 h170 vStatusOtherGroup -Theme +0x50000007, Other
+Gui Font, s9 norm
+Gui Add, CheckBox, vStatusBarCheckBox x366 y63 w110 h20 +0x2, % " Enable Status Bar"
 
 ; settings tab
 Gui Tab, 3
 Gui Font, s10 w600
 Gui Add, GroupBox, x16 y40 w467 h65 vGeneralSettingsGroup -Theme +0x50000007, General
 Gui Font, s9 norm
-Gui Add, CheckBox, vVIPCheckBox x32 y58 w300 h22 +0x2, % " VIP Gamepass Owned"
+Gui Add, CheckBox, vVIPCheckBox x32 y58 w300 h22 +0x2, % " VIP Gamepass Owned (Movement Speed increase)"
 Gui Add, CheckBox, vExtraAlignmentCheckBox x32 y80 w300 h22 +0x2, % " Extra Alignment Check (Disable if loop resetting)"
 
 Gui Font, s10 w600
-Gui Add, GroupBox, x16 y105 w467 h70 vReconnectSettingsGroup -Theme +0x50000007, Reconnect
+Gui Add, GroupBox, x16 y105 w467 h105 vReconnectSettingsGroup -Theme +0x50000007, Reconnect
 Gui Font, s9 norm
-Gui Add, Text, x26 y126 w100 h20 vPrivateServerInputHeader BackgroundTrans, Private Server Link:
-Gui Add, Edit, x31 y145 w150 h20 vPrivateServerInput,% ""
+Gui Add, CheckBox, vReconnectCheckBox x32 y127 w300 h16 +0x2, % " Enable Reconnect (Will reconnect if you disconnect)"
+Gui Add, Text, x26 y148 w100 h20 vPrivateServerInputHeader BackgroundTrans, Private Server Link:
+Gui Add, Edit, x31 y167 w437 h20 vPrivateServerInput,% ""
 
 
 ; credits tab
@@ -931,10 +1061,20 @@ Gui Add, Text, x326 y59 w150 h68,% "Natro Macro, a macro for Bee Swarm Simulator
 
 Gui Font, s10 w600
 Gui Add, GroupBox, x252 y130 w231 h80 vCreditsGroup3 -Theme +0x50000007, Other
-Gui Font, s11 norm
-Gui Add, Link, x268 y150 w200 h30, Join the <a href="https://discord.gg/DYUqwJchuV">Discord Server</a>!
+Gui Font, s9 norm
+Gui Add, Link, x268 y150 w200 h55, Join the <a href="https://discord.gg/DYUqwJchuV">Discord Server</a>! (Community)`n`nVisit the <a href="https://github.com/BuilderDolphin/dolphSol-Macro">GitHub</a>! (Updates + Versions)
 
 Gui Show, % "w500 h254 x" clamp(options.WindowX,10,A_ScreenWidth-100) " y" clamp(options.WindowY,10,A_ScreenHeight-100), dolphSol Macro
+
+
+; status bar
+Gui statusBar:New, AlwaysOnTop
+Gui Font, s10 norm
+Gui Add, Text, x5 y5 w210 h15 vStatusBarText, Status: Waiting...
+
+
+Gui mainUI:Default
+
 
 
 global directValues := {"ObbyCheckBox":"DoingObby"
@@ -942,7 +1082,11 @@ global directValues := {"ObbyCheckBox":"DoingObby"
     ,"CollectCheckBox":"CollectItems"
     ,"VIPCheckBox":"VIP"
     ,"ExtraAlignmentCheckBox":"ExtraAlignment"
-    ,"AutoEquipCheckBox":"AutoEquipEnabled"}
+    ,"AutoEquipCheckBox":"AutoEquipEnabled"
+    ,"ReconnectCheckBox":"ReconnectEnabled"
+    ,"WebhookCheckBox":"WebhookEnabled"
+    ,"WebhookInput":"WebhookLink"
+    ,"StatusBarCheckBox":"StatusBarEnabled"}
 
 updateUIOptions(){
     for i,v in directValues {
@@ -961,6 +1105,10 @@ updateUIOptions(){
     }
 }
 updateUIOptions()
+
+validateWebhookLink(link){
+    return RegExMatch(link,"\Qhttps://discord.com/api/webhooks/\E(\d+)/.*") && !RegExMatch(link,"=")
+}
 
 applyNewUIOptions(){
     global hGui
@@ -987,20 +1135,101 @@ applyNewUIOptions(){
         options.PrivateServerId := serverId ""
     }
 
+    GuiControlGet, webhookLink,,WebhookInput
+    if (webhookLink){
+        valid := validateWebhookLink(webhookLink)
+        if (valid){
+            options.WebhookLink := webhookLink
+        } else {
+            if (options.WebhookLink){
+                MsgBox,0,New Webhook Link Invalid, % "Invalid webhook link, the link has been reverted to your previous valid one."
+            } else {
+                MsgBox,0,Webhook Link Invalid, % "Invalid webhook link, the webhook option has been disabled."
+                options.WebhookEnabled := 0
+            }
+        }
+    }
+
     Loop 6 {
         GuiControlGet, rValue,,CollectSpot%A_Index%CheckBox
         options["ItemSpot" . A_Index] := rValue
     }
 }
 
+handleWebhookEnableToggle(){
+    GuiControlGet, rValue,,WebhookCheckBox
+
+    if (rValue){
+        GuiControlGet, link,,WebhookInput
+        if (!validateWebhookLink(link)){
+            GuiControl, , WebhookCheckBox,0
+            MsgBox,0,Webhook Link Invalid, % "Invalid webhook link, the webhook option has been disabled."
+        }
+    }
+}
+
+global statDisplayInfo := {"RunTime":"Run Time"
+    ,"Disconnects":"Disconnects"
+    ,"ObbyCompletes":"Obby Completes"
+    ,"ObbyAttempts":"Obby Attempts"
+    ,"CollectionLoops":"Collection Loops"}
+
+formatNum(n,digits := 2){
+    n := Floor(n+0.5)
+    cDigits := Max(1,Ceil(Log(Max(n,1))))
+    final := n
+    if (digits > cDigits){
+        loopCount := digits-cDigits
+        Loop %loopCount% {
+            final := "0" . final
+        }
+    }
+    return final
+}
+
+getTimerDisplay(t){
+    return formatNum(Floor(t/86400)) . ":" . formatNum(Floor(Mod(t,86400)/3600)) . ":" . formatNum(Floor(Mod(t,3600)/60)) . ":" . formatNum(Mod(t,60))
+}
+
 updateUI(){
     ; per 1s
+    if (running){
+        options.RunTime += 1
+    }
 
+    statText := ""
+    for i,v in statDisplayInfo {
+        value := options[i]
+        if (statText){
+            statText .= "`n"
+        }
+        if (i = "RunTime"){
+            value := getTimerDisplay(value)
+        }
+        statText .= v . ": " . value
+    }
+    GuiControl, , StatsDisplay, % statText
 }
 updateUI()
 
+global statusColors := {"Starting Macro":3447003
+    ,"Roblox Disconnected":15548997
+    ,"Reconnecting":9807270
+    ,"Reconnecting, Roblox Opened":9807270
+    ,"Reconnecting, Game Loaded":9807270
+    ,"Reconnect Complete":3447003
+    ,"Initializing":3447003
+    ,"Searching for Items":15844367
+    ,"Doing Obby":15105570
+    ,"Completed Obby":5763719
+    ,"Obby Failed, Retrying":11027200}
+
 updateStatus(newStatus){
-    GuiControl, mainUI:, MainStatus, Status: %newStatus%
+    if (options.WebhookEnabled){
+        FormatTime, fTime, , HH:mm:ss
+        webhookPost("[" fTime "]: " newStatus,,statusColors[newStatus] ? statusColors[newStatus] : 1)
+    }
+    GuiControl,statusBar:,StatusBarText,% "Status: " newStatus
 }
 
 global selectingAutoEquip := 0
@@ -1082,7 +1311,7 @@ startMacro(){
     if (!canStart){
         return
     }
-    global running,robloxId
+    global robloxId
     if (macroStarted) {
         return
     }
@@ -1097,6 +1326,10 @@ startMacro(){
 
     Gui, mainUI:+LastFoundExist
     WinSetTitle, % "dolphSol Macro (Running)"
+
+    if (options.StatusBarEnabled){
+        Gui statusBar:Show, % "w220 h25 x" (A_ScreenWidth-300) " y50", dolphSol Status
+    }
     
     robloxId := WinExist("Roblox")
     if (!robloxId){
@@ -1112,6 +1345,12 @@ startMacro(){
     }
 }
 
+if (!options.WasRunning){
+    options.WasRunning := 1
+    saveOptions()
+    MsgBox, 0,dolphSol Macro - Welcome, % "Welcome to dolphSol macro!`n`nIf this is your first time here, make sure to go through all of the tabs to make sure your settings are right.`n`nSince there is no current auto-update system in place, it is suggested that you join the Discord server and/or check the GitHub page for updates, which can both be found in the Credits page. (Discord link is also in the bottom right corner)"
+}
+
 canStart := 1
 
 return
@@ -1123,6 +1362,7 @@ StartClick:
     return
 
 PauseClick:
+    MsgBox, 0,% "Pause",% "Please note that the pause feature isn't very stable currently. It is suggested to stop instead."
     Pause
     return
 
@@ -1139,32 +1379,38 @@ DiscordServerClick:
     Run % "https://discord.gg/DYUqwJchuV"
     return
 
+EnableWebhookToggle:
+    handleWebhookEnableToggle()
+    return
+
 ; help buttons
 
 ObbyHelpClick:
-    MsgBox, 0, Obby, % "Section for attempting to complete the Obby on the map for the +30% luck buff every 2 minutes. If you have the VIP Gamepass, make sure to enable it in Settings.`n`nCheck For Obby Buff Effect - Checks your status effects upon completing the obby and attempts to find the buff. If it is missing, the macro will retry the obby one more time. Disable this if your macro keeps retrying the obby after completing it.`n`nPLEASE NOTE: The macro's obby completion ability HIGHLY depends on a stable frame-rate, and will likely fail from any frame freezes. If your macro is unable to complete the obby at all, it is best to disable this option."
+    MsgBox, 0, Obby, % "Section for attempting to complete the Obby on the map for the +30% luck buff every 2 minutes. If you have the VIP Gamepass, make sure to enable it in Settings.`n`nCheck For Obby Buff Effect - Checks your status effects upon completing the obby and attempts to find the buff. If it is missing, the macro will retry the obby one more time. Disable this if your macro keeps retrying the obby after completing it. The ObbyCompletes stat will only increase if this check is enabled.`n`nPLEASE NOTE: The macro's obby completion ability HIGHLY depends on a stable frame-rate, and will likely fail from any frame freezes. If your macro is unable to complete the obby at all, it is best to disable this option."
     return
 
 AutoEquipHelpClick:
-    MsgBox, 0, Auto Equip, % "Section for automatically equipping a specified aura every macro round. This is important for equipping auras without walk animations, which may interfere with the macro. This defaults to your first storage slot if not selected.`n`nUse the Select Storage Slot button to select a slot in your Aura Storage to automatically equip. Right click when selecting to cancel.`n`nThis feature is HIGHLY RECOMMENDED to be used on a non-animation aura for best optimization."
+    MsgBox, 0, Auto Equip, % "Section for automatically equipping a specified aura every macro round. This is important for equipping auras without walk animations, which may interfere with the macro. This defaults to your first storage slot if not selected. Enabling this will close your chat window due to it possibly getting in the way of the storage button.`n`nUse the Select Storage Slot button to select a slot in your Aura Storage to automatically equip. Right click when selecting to cancel.`n`nThis feature is HIGHLY RECOMMENDED to be used on a non-animation aura for best optimization."
     return
 
 CollectHelpClick:
     MsgBox, 0, Item Collecting, % "Section for automatically collecting naturally spawned items around the map. Enabling this will have the macro check the selected spots every loop after doing the obby (if enabled and ready).`n`nYou can also specify which spots to collect from. If a spot is disabled, the macro will not grab any items from the spot. Please note that the macro always takes the same path, it just won't collect from a spot if it's disabled. This feature is useful if you are sharing a server with a friend, and split the spots with them.`n`nItem Spots:`n 1 - Left of the Leaderboards`n 2 - Bottom left edge of the Map`n 3 - Under a tree next to the House`n 4 - Inside the House`n 5 - Under the tree next to Jake's Shop`n 6 - Under the tree next to the Mountain"
     return
 
+WebhookHelpClick:
+    MsgBox, 0, Discord Webhook, % "Section for connecting a Discord Webhook to have status messages displayed in a target Discord Channel. Enable this option by entering a valid Discord Webhook link.`n`nTo create a webhook, you must have Administrator permissions in a server (preferably your own, separate server). Go to your target channel, then configure it. Go to Integrations, and create a Webhook in the Webhooks Section. After naming it whatever you like, copy the Webhook URL, then paste it into the macro. Now you can enable the Discord Webhook option!`n`nRequires a valid Webhook URL to enable."
+
 f1::startMacro()
 f2::Pause
 f3::
     stop()
     Reload
-+f3::stop(1)
 
 ~LButton::handleLClick()
 ~RButton::handleRClick()
 
 mainUIGuiClose:
-stop(1)
+    stop(1)
 
 SecondTick:
 updateUI()
