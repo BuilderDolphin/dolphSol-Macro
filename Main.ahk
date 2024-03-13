@@ -24,6 +24,8 @@ CoordMode, Mouse, Screen
 
 Gdip_Startup()
 
+global version := "v1.0.1"
+
 global canStart := 0
 global macroStarted := 0
 global reconnecting := 0
@@ -52,10 +54,10 @@ global options := {"DoingObby":1
     ,"ItemSpot4":1
     ,"ItemSpot5":1
     ,"ItemSpot6":1
+    ,"ItemSpot7":1
     ,"WindowX":100
     ,"WindowY":100
     ,"VIP":0
-    ,"ExtraAlignment":1
     ,"ReconnectEnabled":1
     ,"AutoEquipEnabled":0
     ,"AutoEquipX":-0.415
@@ -120,20 +122,24 @@ writeToINI(path,object,header){
 }
 
 ; data loading
-savedRetrieve := getINIData(configPath)
-if (!savedRetrieve){
-    MsgBox, Unable to retrieve config data, your settings have been set to their defaults.
-    savedRetrieve := {}
-}
-newOptions := {}
-for i,v in options {
-    if (savedRetrieve.HasKey(i)){
-        newOptions[i] := savedRetrieve[i]
-    } else {
-        newOptions[i] := v
+loadData(){
+    global configPath
+    savedRetrieve := getINIData(configPath)
+    if (!savedRetrieve){
+        MsgBox, Unable to retrieve config data, your settings have been set to their defaults.
+        savedRetrieve := {}
     }
+    newOptions := {}
+    for i,v in options {
+        if (savedRetrieve.HasKey(i)){
+            newOptions[i] := savedRetrieve[i]
+        } else {
+            newOptions[i] := v
+        }
+    }
+    options := newOptions
 }
-options := newOptions
+loadData()
 
 saveOptions(){
     global configPath,configHeader
@@ -175,6 +181,10 @@ global possibleDowns := ["w","a","s","d","Space","Enter","Esc","r"]
 stop(terminate := 0) {
     for i,v in possibleDowns {
         Send {%v% Up}
+    }
+
+    if (running){
+        updateStatus("Macro Stopped")
     }
 
     if (terminate){
@@ -272,31 +282,31 @@ initialize()
 
 ; Paths
 
-align(fails := 0){
+align(fails := 0){ ; align v2
     updateStatus("Aligning Character")
     reset()
     Sleep, 5000
 
-    Send, {s Down}
-    walkSleep(1500)
-    Send {d Down}
-    walkSleep(2500)
-    Send, {s Up}
-    Send, {d Up}
-    walkSleep(50)
-    press("w",2500)
-    walkSleep(50)
+    closeChat()
+    Sleep, 200
 
-    successes := 0
-    Loop, 3
-    {
-        successes += spawnCheck()
-        Sleep, 200
-    }
-    if (successes < 3 && fails < 3){
-        align(fails+1)
-        return
-    }
+    clickMenuButton(2)
+    Sleep, 500
+    getRobloxPos(rX,rY,rW,rH)
+    MouseMove, % rX + rW*0.15, % rY + rH*0.1
+    Sleep, 200
+    MouseClick
+    Sleep, 500
+
+    Send, {w Down}
+    Send, {a Down}
+    walkSleep(2750)
+    Send, {a Up}
+    walkSleep(1000)
+    Send, {w Up}
+    walkSleep(50)
+    press("s",2500)
+    walkSleep(50)
 }
 
 collect(num){
@@ -314,76 +324,106 @@ searchForItems(){
     updateStatus("Searching for Items")
     ; item 1
     updateStatus("Searching for Items (#1)")
-    press("a",4250)
-    press("s",1250)
+    press("d",4250)
+    press("w",1250)
     collect(1)
 
     ; item 2
     updateStatus("Searching for Items (#2)")
-    press("s",1500)
-    press("d",250)
-    press("s",3100)
+    press("w",1500)
     press("a",250)
+    press("w",3100)
+    press("d",250)
     collect(2)
 
     ; item 3
     updateStatus("Searching for Items (#3)")
-    press("d",500)
-    press2("w","d",2800)
-    Send, {d Down}
+    press("a",500)
+    press2("s","a",2800)
+    Send, {a Down}
     walkSleep(100)
     jump()
     walkSleep(700)
     jump()
     walkSleep(1200)
-    Send, {s Down}
+    Send, {w Down}
     walkSleep(750)
-    Send, {d Up}
-    Send, {s Up}
-    press("a",250)
-    press("w",250)
-    Send, {d Down}
+    Send, {a Up}
+    Send, {w Up}
+    press("d",250)
+    press("s",250)
+    Send, {a Down}
     jump()
     walkSleep(700)
-    Send, {d Up}
+    Send, {a Up}
     walkSleep(50)
-    Send, {s Down}
+    Send, {w Down}
     jump()
     walkSleep(900)
-    Send, {s Up}
-    press("a",800)
+    Send, {w Up}
+    press("d",800)
     collect(3)
     
     ; item 4
     updateStatus("Searching for Items (#4)")
-    press("d",1550)
-    press("s",1200)
-    Send, {a Down}
+    press("a",1550)
+    press("w",1200)
+    Send, {d Down}
     walkSleep(1250)
-    Send {s Down}
+    Send {w Down}
     walkSleep(750)
-    Send {a Up}
-    Send {s Up}
+    Send {d Up}
+    Send {w Up}
     collect(4)
 
     ; item 5
     updateStatus("Searching for Items (#5)")
-    press("d",1500)
-    press("a",250)
-    press("w",5100)
-    press("d",1400)
-    press("w",600)
+    press("a",1500)
+    press("d",250)
+    press("s",5100)
+    press("a",1400)
+    press("s",600)
     collect(5)
 
     ; item 6
     updateStatus("Searching for Items (#6)")
-    Send {d Down}
+    Send {a Down}
     jump()
-    walkSleep(350)
-    Send {d Up}
-    press("w",4100)
-    press("a",300)
+    walkSleep(300)
+    Send {a Up}
+    press("s",4100)
+    press("d",250)
     collect(6)
+
+    ; item 7
+    updateStatus("Searching for Items (#7)")
+    Send {s Down}
+    walkSleep(2500)
+    press("d",1000)
+    Send {s Up}
+    press("w",200)
+    Send {d Down}
+    walkSleep(100)
+    jump()
+    walkSleep(1250)
+    Send {s Down}
+    walkSleep(500)
+    Send {s Up}
+    jump()
+    walkSleep(1000)
+    Send {s Down}
+    walkSleep(500)
+    Send {d Up}
+    Send {Space Down}
+    walkSleep(1100)
+    Send {Space Up}
+    Send {s Up}
+    Sleep, 500 ; normal bc waiting for jump to land
+    press("d",700)
+    press("w",850)
+    press("d",150)
+    collect(7)
+    
 
     options.CollectionLoops += 1
 }
@@ -392,52 +432,52 @@ doObby(){
     updateStatus("Doing Obby")
     if (options.VIP)
     {    
-        Send {s Down}
+        Send {w Down}
         walkSleep(100)
         jump()
         walkSleep(550)
-        Send {d Down}
+        Send {a Down}
         walkSleep(150)
         jump()
         walkSleep(650)
         jump()
         walkSleep(400)
-        Send {d Up}
+        Send {a Up}
         walkSleep(200)
         jump()
-        Send {d Down}
+        Send {a Down}
         walkSleep(200)
-        Send {d Up}
+        Send {a Up}
         walkSleep(400)
-        Send {s Up}
-        Send {d Down}
-        Send {s Down}
+        Send {w Up}
+        Send {a Down}
+        Send {w Down}
         jump()
         walkSleep(300)
-        Send {s Up}
+        Send {w Up}
         walkSleep(350)
         jump()
         walkSleep(700)
         jump()
         walkSleep(1400)
-        Send {w Down} ;real obby
+        Send {s Down} ;real obby
         jump()
         walkSleep(700)
         jump()
         walkSleep(300)
-        Send {w Up}
+        Send {s Up}
         walkSleep(350)
         jump()
-        Send {w Down}
-        walkSleep(200)
-        Send {w Up}
-        walkSleep(450)
         Send {s Down}
+        walkSleep(200)
+        Send {s Up}
+        walkSleep(450)
+        Send {w Down}
         jump()
         walkSleep(700)
         jump()
         walkSleep(650)
-        Send {d Up}
+        Send {a Up}
         walkSleep(50)
         jump()
         walkSleep(700)
@@ -445,60 +485,60 @@ doObby(){
         walkSleep(700)
         jump()
         walkSleep(600)
-        Send {a Down} ; finish
+        Send {d Down} ; finish
         walkSleep(600)
-        Send {a Up}
-        Send {s Up}
+        Send {d Up}
+        Send {w Up}
     } else {
-        Send {s Down}
+        Send {w Down}
         walkSleep(100)
         jump()
         walkSleep(550)
-        Send {d Down}
+        Send {a Down}
         walkSleep(150)
         jump()
         walkSleep(650)
         jump()
         walkSleep(500)
-        Send {d Up}
+        Send {a Up}
         walkSleep(100)
         jump()
-        Send {d Down}
+        Send {a Down}
         walkSleep(200)
-        Send {d Up}
+        Send {a Up}
         walkSleep(400)
-        Send {d Down}
-        Send {s Down}
+        Send {a Down}
+        Send {w Down}
         walkSleep(50)
         jump()
         walkSleep(300)
-        Send {s Up}
+        Send {w Up}
         walkSleep(350)
         jump()
         walkSleep(700)
         jump()
         walkSleep(1300)
-        Send {w Down} ;real obby
+        Send {s Down} ;real obby
         jump()
         walkSleep(500)
-        Send {w Up}
+        Send {s Up}
         walkSleep(200)
-        Send {w Down}
+        Send {s Down}
         jump()
         walkSleep(300)
-        Send {w Up}
+        Send {s Up}
         walkSleep(450)
         jump()
-        Send {w Down}
-        walkSleep(200)
-        Send {w Up}
-        walkSleep(450)
         Send {s Down}
+        walkSleep(200)
+        Send {s Up}
+        walkSleep(450)
+        Send {w Down}
         jump()
         walkSleep(700)
         jump()
         walkSleep(550)
-        Send {d Up}
+        Send {a Up}
         walkSleep(100)
         jump()
         walkSleep(700)
@@ -506,24 +546,24 @@ doObby(){
         walkSleep(700)
         jump()
         walkSleep(600)
-        Send {a Down} ; finish
+        Send {d Down} ; finish
         walkSleep(450)
-        Send {s Up}
+        Send {w Up}
         walkSleep(200)
-        Send {a Up}
+        Send {d Up}
     }
     options.ObbyAttempts += 1
 }
 
 walkToObby(){
     updateStatus("Walking to Obby")
-    Send {d Down}
+    Send {a Down}
     walkSleep(2300)
     jump()
     walkSleep(2000)
     jump()
     walkSleep(1850)
-    Send {d Up}
+    Send {a Up}
 }
 
 obbyRun(){
@@ -537,6 +577,17 @@ obbyRun(){
 
 ; End of paths
 
+closeChat(){
+    getRobloxPos(pX,pY,width,height)
+    PixelGetColor, chatCheck, % pX + 75, % pY + 12, RGB
+    if (compareColors(chatCheck,0xffffff) < 16){ ; is chat open??
+        MouseMove, % pX + 75, % pY + 12
+        Sleep, 300
+        MouseClick
+        Sleep, 100
+    }
+}
+
 mouseActions(){
     updateStatus("Performing Mouse Actions")
 
@@ -544,13 +595,7 @@ mouseActions(){
 
     ; re equip
     if (options.AutoEquipEnabled){
-        PixelGetColor, chatCheck, % pX + 75, % pY + 12, RGB
-        if (compareColors(chatCheck,0xffffff) < 16){ ; is chat open??
-            MouseMove, % pX + 75, % pY + 12
-            Sleep, 300
-            MouseClick
-            Sleep, 100
-        }
+        closeChat()
 
         checkPos := getStoragePositionFromUV(-1.209440, -0.695182)
         PixelGetColor, checkC, % checkPos[1], % checkPos[2], RGB
@@ -628,7 +673,7 @@ getFromUV(uX,uY,oX,oY,width,height){
     return [Floor((uX*height + width)/2)+oX,Floor((uY*height + height)/2)+oY]
 }
 
-spawnCheck(){
+spawnCheck(){ ; not in use
     if (!options.ExtraAlignment) {
         return 1
     }
@@ -999,6 +1044,7 @@ Gui Add, CheckBox, vCollectSpot3CheckBox x122 y174 w30 h26 +0x2, % " 3"
 Gui Add, CheckBox, vCollectSpot4CheckBox x162 y174 w30 h26 +0x2, % " 4"
 Gui Add, CheckBox, vCollectSpot5CheckBox x202 y174 w30 h26 +0x2, % " 5"
 Gui Add, CheckBox, vCollectSpot6CheckBox x242 y174 w30 h26 +0x2, % " 6"
+Gui Add, CheckBox, vCollectSpot7CheckBox x282 y174 w30 h26 +0x2, % " 7"
 
 ; status tab
 Gui Tab, 2
@@ -1029,7 +1075,7 @@ Gui Font, s10 w600
 Gui Add, GroupBox, x16 y40 w467 h65 vGeneralSettingsGroup -Theme +0x50000007, General
 Gui Font, s9 norm
 Gui Add, CheckBox, vVIPCheckBox x32 y58 w300 h22 +0x2, % " VIP Gamepass Owned (Movement Speed increase)"
-Gui Add, CheckBox, vExtraAlignmentCheckBox x32 y80 w300 h22 +0x2, % " Extra Alignment Check (Disable if loop resetting)"
+Gui Add, Button, vImportSettingsButton gImportSettingsClick x30 y80 w130 h20, Import Settings
 
 Gui Font, s10 w600
 Gui Add, GroupBox, x16 y105 w467 h105 vReconnectSettingsGroup -Theme +0x50000007, Reconnect
@@ -1064,7 +1110,7 @@ Gui Add, GroupBox, x252 y130 w231 h80 vCreditsGroup3 -Theme +0x50000007, Other
 Gui Font, s9 norm
 Gui Add, Link, x268 y150 w200 h55, Join the <a href="https://discord.gg/DYUqwJchuV">Discord Server</a>! (Community)`n`nVisit the <a href="https://github.com/BuilderDolphin/dolphSol-Macro">GitHub</a>! (Updates + Versions)
 
-Gui Show, % "w500 h254 x" clamp(options.WindowX,10,A_ScreenWidth-100) " y" clamp(options.WindowY,10,A_ScreenHeight-100), dolphSol Macro
+Gui Show, % "w500 h254 x" clamp(options.WindowX,10,A_ScreenWidth-100) " y" clamp(options.WindowY,10,A_ScreenHeight-100), % "dolphSol Macro " version
 
 
 ; status bar
@@ -1081,7 +1127,6 @@ global directValues := {"ObbyCheckBox":"DoingObby"
     ,"ObbyBuffCheckBox":"CheckObbyBuff"
     ,"CollectCheckBox":"CollectItems"
     ,"VIPCheckBox":"VIP"
-    ,"ExtraAlignmentCheckBox":"ExtraAlignment"
     ,"AutoEquipCheckBox":"AutoEquipEnabled"
     ,"ReconnectCheckBox":"ReconnectEnabled"
     ,"WebhookCheckBox":"WebhookEnabled"
@@ -1099,7 +1144,7 @@ updateUIOptions(){
         GuiControl,, PrivateServerInput,% ""
     }
     
-    Loop 6 {
+    Loop 7 {
         v := options["ItemSpot" . A_Index]
         GuiControl,,CollectSpot%A_Index%CheckBox,%v%
     }
@@ -1150,9 +1195,48 @@ applyNewUIOptions(){
         }
     }
 
-    Loop 6 {
+    Loop 7 {
         GuiControlGet, rValue,,CollectSpot%A_Index%CheckBox
         options["ItemSpot" . A_Index] := rValue
+    }
+}
+
+global importingSettings := 0
+handleImportSettings(){
+    global configPath
+
+    if (importingSettings){
+        return
+    }
+
+    MsgBox, % 1 + 4096, % "Import Settings", % "To import the settings from a previous version folder of the Macro, please select the ""config.ini"" file located in the previous version's ""settings"" folder when prompted. Press OK to begin."
+
+    IfMsgBox, Cancel
+        return
+    
+    importingSettings := 1
+
+    FileSelectFile, targetPath, 3,, Import dolphSol Settings Through a config.ini File, % "Configuration settings (config.ini)"
+
+    if (targetPath && RegExMatch(targetPath,"\\config\.ini")){
+        if (targetPath != configPath){
+            FileRead, retrieved, %targetPath%
+
+            if (!ErrorLevel){
+                FileDelete, %configPath%
+                FileAppend, %retrieved%, %configPath%
+
+                loadData()
+                updateUIOptions()
+                saveOptions()
+
+                MsgBox, 0,Import Settings,% "Success!"
+            } else {
+                MsgBox,0,Import Settings Error, % "An error occurred while reading the file, please try again."
+            }
+        } else {
+            MsgBox, 0,Import Settings Error, % "Cannot import settings from the current macro!"
+        }
     }
 }
 
@@ -1222,7 +1306,8 @@ global statusColors := {"Starting Macro":3447003
     ,"Searching for Items":15844367
     ,"Doing Obby":15105570
     ,"Completed Obby":5763719
-    ,"Obby Failed, Retrying":11027200}
+    ,"Obby Failed, Retrying":11027200
+    ,"Macro Stopped":3447003}
 
 updateStatus(newStatus){
     if (options.WebhookEnabled){
@@ -1325,7 +1410,7 @@ startMacro(){
     saveOptions()
 
     Gui, mainUI:+LastFoundExist
-    WinSetTitle, % "dolphSol Macro (Running)"
+    WinSetTitle, % "dolphSol Macro " version " (Running)"
 
     if (options.StatusBarEnabled){
         Gui statusBar:Show, % "w220 h25 x" (A_ScreenWidth-300) " y50", dolphSol Status
@@ -1383,6 +1468,10 @@ EnableWebhookToggle:
     handleWebhookEnableToggle()
     return
 
+ImportSettingsClick:
+    handleImportSettings()
+    return
+
 ; help buttons
 
 ObbyHelpClick:
@@ -1394,7 +1483,7 @@ AutoEquipHelpClick:
     return
 
 CollectHelpClick:
-    MsgBox, 0, Item Collecting, % "Section for automatically collecting naturally spawned items around the map. Enabling this will have the macro check the selected spots every loop after doing the obby (if enabled and ready).`n`nYou can also specify which spots to collect from. If a spot is disabled, the macro will not grab any items from the spot. Please note that the macro always takes the same path, it just won't collect from a spot if it's disabled. This feature is useful if you are sharing a server with a friend, and split the spots with them.`n`nItem Spots:`n 1 - Left of the Leaderboards`n 2 - Bottom left edge of the Map`n 3 - Under a tree next to the House`n 4 - Inside the House`n 5 - Under the tree next to Jake's Shop`n 6 - Under the tree next to the Mountain"
+    MsgBox, 0, Item Collecting, % "Section for automatically collecting naturally spawned items around the map. Enabling this will have the macro check the selected spots every loop after doing the obby (if enabled and ready).`n`nYou can also specify which spots to collect from. If a spot is disabled, the macro will not grab any items from the spot. Please note that the macro always takes the same path, it just won't collect from a spot if it's disabled. This feature is useful if you are sharing a server with a friend, and split the spots with them.`n`nItem Spots:`n 1 - Left of the Leaderboards`n 2 - Bottom left edge of the Map`n 3 - Under a tree next to the House`n 4 - Inside the House`n 5 - Under the tree next to Jake's Shop`n 6 - Under the tree next to the Mountain`n 7 - On top of the Hill with the Cave"
     return
 
 WebhookHelpClick:
