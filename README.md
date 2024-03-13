@@ -3,11 +3,9 @@
 
  ## Installation
  - First of all, you need to download [AutoHotKey v1.1](https://www.autohotkey.com/) (Not 2.0), and run the installer
- - Once complete, download the most recent version of dolphSol through the most recent [GitHub Release](https://github.com/BuilderDolphin/dolphSol-Macro/releases/latest)
- - After downloading, extract the folder (if downloading the ZIP) to your desired directory
- - You can now run dolphSol through the Main.ahk file in the folder.
-
- Discord Server: https://discord.gg/DYUqwJchuV
+ - Once complete, download the most recent version of dolphSol through the most recent [GitHub Release](https://github.com/BuilderDolphin/dolphSol-Macro/releases/latest) (Download source code ZIP)
+ - After downloading, extract the ZIP file to your desired directory
+ - You can now run dolphSol through the Main.ahk file in the folder
 
 ## Features
 dolphSol has a couple of different features it is capable of. These include:
@@ -18,3 +16,5 @@ dolphSol has a couple of different features it is capable of. These include:
  - Reconnecting upon disconnect
  - Setting for the VIP gamepass to compensate for the increased WalkSpeed
  - Settings importing, useful for updates
+
+ Discord Server: https://discord.gg/DYUqwJchuV
