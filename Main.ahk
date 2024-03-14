@@ -248,9 +248,12 @@ press2(k, k2, duration := 50) {
 }
 
 reset() {
-    press("Esc",100)
-    press("r",100)
-    press("Enter",100)
+    press("Esc",150)
+    Sleep, 50
+    press("r",150)
+    Sleep, 50
+    press("Enter",150)
+    Sleep, 50
 }
 jump() {
     press("Space")
