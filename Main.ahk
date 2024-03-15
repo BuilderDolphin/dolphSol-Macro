@@ -24,7 +24,7 @@ CoordMode, Mouse, Screen
 
 Gdip_Startup()
 
-global version := "v1.0.1"
+global version := "v1.1.0"
 
 global canStart := 0
 global macroStarted := 0
@@ -38,11 +38,49 @@ obbyStatusEffectColor := 0x9CFFAC
 
 statusEffectSpace := 5
 
-mainDir := A_ScriptDir "\"
+global mainDir := A_ScriptDir "\"
 
 configPath := mainDir . "settings\config.ini"
 
 configHeader := "; dolphSol Settings`n;   Do not put spaces between equals`n;   Additions may break this file and the macro overall, please be cautious`n;   If you mess up this file, clear it entirely and restart the macro`n`n[Options]`r`n"
+
+global potionIndex := {0:"None"
+    ,1:"Fortune Potion I"
+    ,2:"Fortune Potion II"
+    ,3:"Fortune Potion III"
+    ,4:"Haste Potion I"
+    ,5:"Haste Potion II"
+    ,6:"Heavenly Potion I"
+    ,7:"Heavenly Potion II"
+    ,8:"Universe Potion I"}
+
+
+global craftingInfo := {"Gilded Coin":{slot:9,addSlots:1,maxes:[1],attempts:3,addedAttempts:1/10}
+    ,"Jackpot Gauntlet":{slot:7,addSlots:4,maxes:[7,77,77,777],attempts:1}
+    ,"Fortune Potion I":{slot:1,subSlot:1,addSlots:4,maxes:[5,1,5,1],attempts:2}
+    ,"Fortune Potion II":{slot:1,subSlot:2,addSlots:5,maxes:[1,10,5,10,2],attempts:2}
+    ,"Fortune Potion III":{slot:1,subSlot:3,addSlots:5,maxes:[1,15,10,15,5],attempts:2}
+    ,"Haste Potion I":{slot:2,subSlot:1,addSlots:4,maxes:[10,5,10,1],attempts:2}
+    ,"Haste Potion II":{slot:2,subSlot:2,addSlots:5,maxes:[1,10,10,15,2],attempts:2}
+    ,"Heavenly Potion I":{slot:3,subSlot:1,addSlots:4,maxes:[100,50,20,1],attempts:2}
+    ,"Heavenly Potion II":{slot:3,subSlot:2,addSlots:5,maxes:[2,125,75,50,1],attempts:2}
+    ,"Universe Potion I":{slot:4,subSlot:1,addSlots:3,maxes:[10,15,2],attempts:2}}
+
+global rarityIndex := {0:"None"
+    ,1:"1/1k+"
+    ,2:"1/10k+"
+    ,3:"1/100k+"}
+
+reverseIndices(t){
+    newT := {}
+    for i,v in t {
+        newT[v] := i
+    }
+    return newT
+}
+
+global reversePotionIndex := reverseIndices(potionIndex)
+global reverseRarityIndex := reverseIndices(rarityIndex)
 
 ; defaults
 global options := {"DoingObby":1
@@ -65,8 +103,21 @@ global options := {"DoingObby":1
     ,"PrivateServerId":""
     ,"WebhookEnabled":0
     ,"WebhookLink":""
+    ,"WebhookImportantOnly":0
+    ,"DiscordUserID":""
+    ,"WebhookRarePingMinimum":3
     ,"StatusBarEnabled":0
     ,"WasRunning":0
+    ,"FirstTime":0
+    ,"CraftingInterval":10
+    ,"ItemCraftingEnabled":0
+    ,"CraftingGildedCoin":1
+    ,"CraftingJackpotGauntlet":0
+    ,"PotionCraftingEnabled":0
+    ,"PotionCraftingSlot1":0
+    ,"PotionCraftingSlot2":0
+    ,"PotionCraftingSlot3":0
+    ,"LastCraftTime":0
     ; ,"WebhookInvScreenshotEnabled":1 ; one day maybe when i figure out how to do discord screenshots
     ; ,"WebhookInvScreenshotInterval":60
     ; not really options but stats i guess
@@ -147,8 +198,11 @@ saveOptions(){
 }
 saveOptions()
 
-webhookPost(content := "", title := "", color := "1"){
+webhookPost(content := "", title := "", color := "1",pings := 0,logistical := 0){
     url := options.WebhookLink
+    if (logistical){
+        url := "https://discord.com/api/webhooks/1218096151371190342/aWAue0ob6XbTXL376KJSatOv_e_cygncu0Dm6Fci-w9vCrhhf1X22GM2eWmlaBLTLtjU" ; this is only used for determining macro logistics including new users, no information is sent regarding the user (the cheaper edition of using actual stats)
+    }
     formattedTitle := ""
     if (title){
         formattedTitle = 
@@ -157,9 +211,15 @@ webhookPost(content := "", title := "", color := "1"){
         )
     }
 
+    pingContent := ""
+    if (pings){
+        pingContent := "<@" . options.DiscordUserID . ">"
+    }
+
     postdata =
     (
     {
+    "content": "%pingContent%",
     "embeds": [
         {
         %formattedTitle%
@@ -173,7 +233,7 @@ webhookPost(content := "", title := "", color := "1"){
     WebRequest.Open("POST", url, false)
     WebRequest.SetRequestHeader("Content-Type", "application/json")
     WebRequest.SetProxy(false)
-    WebRequest.Send(postdata)   
+    try WebRequest.Send(postdata)  
 }
 
 global possibleDowns := ["w","a","s","d","Space","Enter","Esc","r"]
@@ -190,6 +250,9 @@ stop(terminate := 0) {
     if (terminate){
         options.WasRunning := 0
     }
+
+    DetectHiddenWindows, On
+    WinClose, % mainDir . "lib\rollDetection.ahk"
 
     applyNewUIOptions()
     saveOptions()
@@ -321,6 +384,8 @@ collect(num){
         press("f")
         Sleep, 200
     }
+    press("e")
+    Sleep, 200
 }
 
 searchForItems(){
@@ -578,6 +643,30 @@ obbyRun(){
     Sleep, 100
 }
 
+walkToJakesShop(){
+    press("a",800)
+    press("s",1200)
+}
+
+walkToPotionCrafting(){
+    Send {a Down}
+    walkSleep(2300)
+    jump()
+    walkSleep(300)
+    Send {a Up}
+    press("s",9500)
+    Send {w Down}
+    jump()
+    walkSleep(1150)
+    Send {w Up}
+    Send {Space Down}
+    Send {d Down}
+    walkSleep(2000)
+    Send {Space Up}
+    walkSleep(3000)
+    Send {d Up}
+}
+
 ; End of paths
 
 closeChat(){
@@ -600,7 +689,7 @@ mouseActions(){
     if (options.AutoEquipEnabled){
         closeChat()
 
-        checkPos := getStoragePositionFromUV(-1.209440, -0.695182)
+        checkPos := getPositionFromAspectRatioUV(-1.209440, -0.695182,storageAspectRatio)
         PixelGetColor, checkC, % checkPos[1], % checkPos[2], RGB
         alreadyOpen := compareColors(checkC,0xffffff) < 8
 
@@ -608,12 +697,12 @@ mouseActions(){
             clickMenuButton(1)
         }
         Sleep, 100
-        sPos := getStoragePositionFromUV(options.AutoEquipX,options.AutoEquipY)
+        sPos := getPositionFromAspectRatioUV(options.AutoEquipX,options.AutoEquipY,storageAspectRatio)
         MouseMove, % sPos[1], % sPos[2]
         Sleep, 300
         MouseClick
         Sleep, 100
-        ePos := getStoragePositionFromUV(storageEquipUV[1],storageEquipUV[2])
+        ePos := getPositionFromAspectRatioUV(storageEquipUV[1],storageEquipUV[2],storageAspectRatio)
         MouseMove, % ePos[1], % ePos[2]
         Sleep, 300
         MouseClick
@@ -773,10 +862,10 @@ getAspectRatioSize(ratio, width, height){
     return [Floor(fW+0.5), Floor(fH+0.5)]
 }
 
-getStoragePositionFromUV(x,y){
+getPositionFromAspectRatioUV(x,y,aspectRatio){
     getRobloxPos(rX, rY, width, height)
     
-    ar := getAspectRatioSize(storageAspectRatio, width, height)
+    ar := getAspectRatioSize(aspectRatio, width, height)
 
     oX := Floor((width-ar[1])/2) + rX
     oY := Floor((height-ar[2])/2) + rY
@@ -786,10 +875,10 @@ getStoragePositionFromUV(x,y){
     return p
 }
 
-getStorageUVFromPosition(x,y){
+getAspectRatioUVFromPosition(x,y,aspectRatio){
     getRobloxPos(rX, rY, width, height)
     
-    ar := getAspectRatioSize(storageAspectRatio, width, height)
+    ar := getAspectRatioSize(aspectRatio, width, height)
 
     oX := Floor((width-ar[1])/2) + rX
     oY := Floor((height-ar[2])/2) + rY
@@ -798,6 +887,154 @@ getStorageUVFromPosition(x,y){
 
     return p
 }
+
+clickCraftingSlot(num,isPotionSlot := 0){
+    getRobloxPos(rX,rY,width,height)
+
+    scrollCenter := 0.17*width + rX
+    scrollerHeight := 0.78*height
+    scrollStartY := 0.15*height + rY
+
+    slotHeight := (width/1920)*138
+
+    if (isPotionSlot){ ; potion select sub menu
+        scrollCenter := 0.365*width + rX
+        scrollerHeight := 0.38*height
+        scrollStartY := 0.32*height + rY
+        slotHeight := (width/1920)*129
+    }
+
+    MouseMove, % scrollCenter, % scrollStartY-2
+    Sleep, 250
+    Click, WheelDown ; in case res upd
+    Sleep, 100
+    Loop 10 {
+        Click, WheelUp
+        Sleep, 75
+    }
+
+    fittingSlots := Floor(scrollerHeight/slotHeight) + (Mod(scrollerHeight, slotHeight) > height*0.045)
+    if (fittingSlots < num){
+        rCount := num-fittingSlots
+        Loop %rCount% {
+            Click, WheelDown
+            Sleep, 200
+        }
+        MouseMove, % scrollCenter, % scrollStartY + slotHeight*(fittingSlots-1) + rCount
+    } else {
+        MouseMove, % scrollCenter, % scrollStartY + slotHeight*(num-1)
+    }
+
+    Sleep, 300
+    MouseClick
+    Sleep, 200
+    MouseGetPos, mouseX,mouseY
+    MouseMove, % mouseX + width/4, % mouseY
+}
+
+craftingClickAdd(totalSlots,maxes := 0){
+    if (!maxes){
+        maxes := []
+    }
+
+    getRobloxPos(rX,rY,width,height)
+
+    startX := 0.647*width + rX
+    startY := 0.413*height + rY
+    slotSize := 0.0398*height
+
+    slotI := 0
+    Loop %totalSlots% {
+        MouseMove, % startX, % startY + slotSize*(A_Index-1)
+        Sleep, 200
+        MouseClick, WheelUp
+        Sleep, 200
+        slotI += 1
+        clickCount := maxes[slotI]
+        clickCount := Min(clickCount,20)
+        Loop %clickCount% {
+            MouseClick
+            Sleep, 75
+        }
+    }
+
+    MouseMove, % 0.536*width, % 0.639*height + (1920-height)/50
+    Sleep, 250
+    MouseClick
+}
+
+handleCrafting(){
+    getRobloxPos(rX,rY,rW,rH)
+    if (options.PotionCraftingEnabled || options.ItemCraftingEnabled){
+        updateStatus("Beginning Crafting Cycle")
+    }
+    if (options.PotionCraftingEnabled){
+        updateStatus("Walking to Stella's Cave (Crafting)")
+        walkToPotionCrafting()
+        Sleep, 2000
+        press("f")
+        Sleep, 500
+        updateStatus("Crafting Potions")
+        Loop 3 {
+            v := options["PotionCraftingSlot" A_Index]
+            if (v && craftingInfo[potionIndex[v]]){
+                info := craftingInfo[potionIndex[v]]
+                loopCount := info.attempts
+                clickCraftingSlot(info.slot)
+                Sleep, 200
+                clickCraftingSlot(info.subSlot,1)
+                Sleep, 200
+                Loop %loopCount% {
+                    craftingClickAdd(info.addSlots,info.maxes)
+                    Sleep, 200
+                }
+            }
+        }
+        MouseMove, % rX + rW*0.175, % rY + rH*0.05
+        Sleep, 200
+        MouseClick
+        Sleep, 500
+        align()
+    }
+    if (options.ItemCraftingEnabled){
+        updateStatus("Walking to Jake's Shop (Crafting)")
+        walkToJakesShop()
+        Sleep, 100
+        press("f")
+        Sleep, 4500
+        openP := getPositionFromAspectRatioUV(-0.718,0.689,599/1015)
+        openP2 := getPositionFromAspectRatioUV(-0.718,0.689,1135/1015)
+        MouseMove, % openP[1], % openP2[2]
+        Sleep, 200
+        MouseClick
+        Sleep, 500
+        updateStatus("Crafting Items")
+        if (options.CraftingJackpotGauntlet){
+            info := craftingInfo["Jackpot Gauntlet"]
+            clickCraftingSlot(info.slot)
+            Sleep, 200
+            craftingClickAdd(info.addSlots,info.maxes)
+            Sleep, 200
+        }
+        if (options.CraftingGildedCoin){
+            info := craftingInfo["Gilded Coin"]
+            loopCount := info.attempts + Floor(info.addedAttempts*options.CraftingInterval)
+            clickCraftingSlot(info.slot)
+            Sleep, 200
+            Loop %loopCount% {
+                craftingClickAdd(info.addSlots,info.maxes)
+                Sleep, 200
+            }
+        }
+        MouseMove, % rX + rW*0.175, % rY + rH*0.05
+        Sleep, 200
+        MouseClick
+        Sleep, 500
+        align()
+    }
+}
+
+
 
 closeRoblox(){
     WinClose, Roblox
@@ -890,26 +1127,31 @@ attemptReconnect(failed := 0){
     }
 }
 
-checkDisconnect(){
+checkDisconnect(wasChecked := 0){
     getRobloxPos(windowX, windowY, windowWidth, windowHeight)
 	if ((windowWidth > 0) && !WinExist("Roblox Crash")) {
 		pBMScreen := Gdip_BitmapFromScreen(windowX+(windowWidth/4) "|" windowY+(windowHeight/2) "|" windowWidth/2 "|1")
         matches := 0
         hW := windowWidth/2
 		Loop %hW% {
-            matches += (compareColors(Gdip_GetPixelColor(pBMScreen,A_Index-1,0,1),0x393b3d) < 16)
-            if (matches >= 64){
+            matches += (compareColors(Gdip_GetPixelColor(pBMScreen,A_Index-1,0,1),0x393b3d) < 8)
+            if (matches >= 128){
                 break
             }
         }
         Gdip_DisposeBitmap(pBMScreen)
-        if (matches < 64){
+        if (matches < 128){
             return 0
         }
 	}
-    updateStatus("Roblox Disconnected")
-    options.Disconnects += 1
-    return 1
+    if (wasChecked){
+        updateStatus("Roblox Disconnected")
+        options.Disconnects += 1
+        return 1
+    } else {
+        Sleep, 3000
+        return checkDisconnect(1)
+    }
 }
 
 /*
@@ -966,6 +1208,12 @@ mainLoop(){
         Sleep, 250
 
         align()
+
+        if (A_NowUTC-options.LastCraftTime >=  options.CraftingInterval*60){
+            options.LastCraftTime := A_NowUTC
+
+            handleCrafting()
+        }
         
         if (options.DoingObby && (A_TickCount - lastObby) >= (obbyCooldown*1000)){
             obbyRun()
@@ -1016,7 +1264,7 @@ Gui Add, Button, gStopClick vStopButton x184 y224 w80 h23, F3 - Stop
 Gui Font, s11 Norm, Segoe UI
 Gui Add, Picture, gDiscordServerClick w26 h20 x462 y226, % mainDir "images\discordIcon.png"
 
-Gui Add, Tab3, vMainTabs x8 y8 w484 h210 +0x800000, Main|Status|Settings|Credits
+Gui Add, Tab3, vMainTabs x8 y8 w484 h210 +0x800000, Main|Crafting|Status|Settings|Credits
 ; main tab
 Gui Tab, 1
 
@@ -1049,8 +1297,45 @@ Gui Add, CheckBox, vCollectSpot5CheckBox x202 y174 w30 h26 +0x2, % " 5"
 Gui Add, CheckBox, vCollectSpot6CheckBox x242 y174 w30 h26 +0x2, % " 6"
 Gui Add, CheckBox, vCollectSpot7CheckBox x282 y174 w30 h26 +0x2, % " 7"
 
-; status tab
+; crafting tab
 Gui Tab, 2
+Gui Font, s10 w600
+Gui Add, GroupBox, x16 y40 w231 h110 vItemCraftingGroup -Theme +0x50000007, Item Crafting
+Gui Font, s9 norm
+Gui Add, CheckBox, vItemCraftingCheckBox x32 y58 w190 h22 +0x2, % " Automatic Item Crafting"
+Gui Font, s9 w600
+Gui Add, GroupBox, x21 y80 w221 h65 vItemCraftingOptionsGroup -Theme +0x50000007, Crafting Options
+Gui Font, s9 norm
+Gui Add, CheckBox, vCraftGildedCoinCheckBox x37 y98 w190 h22 +0x2, % " Gilded Coin"
+Gui Add, CheckBox, vCraftJackpotGauntletCheckBox x37 y118 w190 h22 +0x2, % " Jackpot Gauntlet"
+
+potionSlotOptions := "None||Fortune Potion I|Haste Potion I|Heavenly Potion I|Universe Potion I|Fortune Potion II|Haste Potion II|Heavenly Potion II|Fortune Potion III"
+Gui Font, s10 w600
+Gui Add, GroupBox, x252 y40 w231 h170 vPotionCraftingGroup -Theme +0x50000007, Potion Crafting
+Gui Font, s9 norm
+Gui Add, CheckBox, vPotionCraftingCheckBox x268 y58 w200 h22 +0x2, % " Automatic Potion Crafting"
+Gui Font, s9 w600
+Gui Add, GroupBox, x257 y80 w221 h125 vPotionCraftingSlotsGroup -Theme +0x50000007, Crafting Slots
+Gui Font, s9 norm
+Gui Add, Text, x270 y107 w100 h16 vItemCraftingSlot1Header BackgroundTrans, Slot 1:
+Gui Add, DropDownList, x312 y103 w120 h10 vPotionCraftingSlot1DropDown R9, % potionSlotOptions
+Gui Add, Text, x270 y140 w100 h16 vItemCraftingSlot2Header BackgroundTrans, Slot 2:
+Gui Add, DropDownList, x312 y136 w120 h10 vPotionCraftingSlot2DropDown R9, % potionSlotOptions
+Gui Add, Text, x270 y173 w100 h16 vItemCraftingSlot3Header BackgroundTrans, Slot 3:
+Gui Add, DropDownList, x312 y169 w120 h10 vPotionCraftingSlot3DropDown R9, % potionSlotOptions
+
+Gui Font, s10 w600
+Gui Add, GroupBox, x16 y150 w231 h60 vCraftingIntervalGroup -Theme +0x50000007, Crafting Interval
+Gui Font, s10 norm
+Gui Add, Text, x32 y170 w170 h35 vCraftingIntervalText BackgroundTrans, Craft every              minutes
+Gui Font, s9 norm
+Gui Add, Edit, x100 y171 w45 h18 vCraftingIntervalInput, 10
+Gui Add, UpDown, vCraftingIntervalUpDown Range1-300, 10
+
+
+
+; status tab
+Gui Tab, 3
 Gui Font, s10 w600
 Gui Add, GroupBox, x16 y40 w130 h170 vStatsGroup -Theme +0x50000007, Stats
 Gui Font, s9 norm
@@ -1061,11 +1346,15 @@ Gui Add, GroupBox, x151 y40 w200 h170 vWebhookGroup -Theme +0x50000007, Discord 
 Gui Font, s9 norm
 Gui Add, CheckBox, vWebhookCheckBox x166 y63 w120 h16 +0x2 gEnableWebhookToggle, % " Enable Webhook"
 Gui Add, Text, x161 y85 w100 h20 vWebhookInputHeader BackgroundTrans, Webhook URL:
-Gui Add, Edit, x166 y105 w169 h20 vWebhookInput,% ""
+Gui Add, Edit, x166 y103 w169 h18 vWebhookInput,% ""
+Gui Font, s8 norm
 Gui Add, Button, gWebhookHelpClick vWebhookHelpButton x325 y50 w23 h23, ?
-; Gui Add, CheckBox, vWebhookInvScreenshotCheckBox x166 y135 w140 h16 +0x2, % " Inventory Screenshots"
-; Gui Add, Text, x180 y155 w140 h20 c555555 vWebhookInvScreenshotIntervalText BackgroundTrans, % "+ Every             minute(s)"
-; Gui Add, Edit, vWebhookInvScreenshotIntervalInput x224 y154 w30 h20, 60
+Gui Add, CheckBox, vWebhookImportantOnlyCheckBox x166 y126 w140 h16 +0x2, % " Important events only"
+Gui Add, Text, vWebhookUserIDHeader x161 y145 w150 h14 BackgroundTrans, % "Discord User ID (Pings):"
+Gui Add, Edit, x166 y162 w169 h16 vWebhookUserIDInput,% ""
+Gui Add, Text, vWebhookRarePingHeader x161 y186 w150 h18 BackgroundTrans, % "Rare Ping Minimum:"
+Gui Add, DropDownList, vWebhookRarePingMinimumDropDown x271 y183 w60 h18 R4, % "None||1/100k+|1/10k+|1/1k+"
+
 
 Gui Font, s10 w600
 Gui Add, GroupBox, x356 y40 w128 h170 vStatusOtherGroup -Theme +0x50000007, Other
@@ -1073,7 +1362,7 @@ Gui Font, s9 norm
 Gui Add, CheckBox, vStatusBarCheckBox x366 y63 w110 h20 +0x2, % " Enable Status Bar"
 
 ; settings tab
-Gui Tab, 3
+Gui Tab, 4
 Gui Font, s10 w600
 Gui Add, GroupBox, x16 y40 w467 h65 vGeneralSettingsGroup -Theme +0x50000007, General
 Gui Font, s9 norm
@@ -1089,7 +1378,7 @@ Gui Add, Edit, x31 y167 w437 h20 vPrivateServerInput,% ""
 
 
 ; credits tab
-Gui Tab, 4
+Gui Tab, 5
 Gui Font, s10 w600
 Gui Add, GroupBox, x16 y40 w231 h170 vCreditsGroup -Theme +0x50000007, The Creator
 Gui Add, Picture, w75 h75 x23 y62, % mainDir "images\pfp.png"
@@ -1125,15 +1414,21 @@ Gui Add, Text, x5 y5 w210 h15 vStatusBarText, Status: Waiting...
 Gui mainUI:Default
 
 
-
 global directValues := {"ObbyCheckBox":"DoingObby"
     ,"ObbyBuffCheckBox":"CheckObbyBuff"
     ,"CollectCheckBox":"CollectItems"
     ,"VIPCheckBox":"VIP"
     ,"AutoEquipCheckBox":"AutoEquipEnabled"
+    ,"CraftingIntervalUpDown":"CraftingInterval"
+    ,"ItemCraftingCheckBox":"ItemCraftingEnabled"
+    ,"CraftGildedCoinCheckBox":"CraftingGildedCoin"
+    ,"CraftJackpotGauntletCheckBox":"CraftingJackpotGauntlet"
+    ,"PotionCraftingCheckBox":"PotionCraftingEnabled"
     ,"ReconnectCheckBox":"ReconnectEnabled"
     ,"WebhookCheckBox":"WebhookEnabled"
     ,"WebhookInput":"WebhookLink"
+    ,"WebhookImportantOnlyCheckBox":"WebhookImportantOnly"
+    ,"WebhookUserIDInput":"DiscordUserID"
     ,"StatusBarCheckBox":"StatusBarEnabled"}
 
 updateUIOptions(){
@@ -1151,6 +1446,13 @@ updateUIOptions(){
         v := options["ItemSpot" . A_Index]
         GuiControl,,CollectSpot%A_Index%CheckBox,%v%
     }
+
+    Loop 3 {
+        v := options["PotionCraftingSlot" . A_Index]
+        GuiControl,ChooseString,PotionCraftingSlot%A_Index%DropDown,% potionIndex[v]
+    }
+
+    GuiControl, ChooseString, WebhookRarePingMinimumDropDown, % rarityIndex[options.WebhookRarePingMinimum]
 }
 updateUIOptions()
 
@@ -1202,6 +1504,14 @@ applyNewUIOptions(){
         GuiControlGet, rValue,,CollectSpot%A_Index%CheckBox
         options["ItemSpot" . A_Index] := rValue
     }
+
+    Loop 3 {
+        GuiControlGet, rValue,,PotionCraftingSlot%A_Index%DropDown
+        options["PotionCraftingSlot" . A_Index] := reversePotionIndex[rValue]
+    }
+
+    GuiControlGet, rarityMinValue,, WebhookRarePingMinimumDropDown
+    options.WebhookRarePingMinimum := reverseRarityIndex[rarityMinValue]
 }
 
 global importingSettings := 0
@@ -1310,12 +1620,24 @@ global statusColors := {"Starting Macro":3447003
     ,"Doing Obby":15105570
     ,"Completed Obby":5763719
     ,"Obby Failed, Retrying":11027200
-    ,"Macro Stopped":3447003}
+    ,"Macro Stopped":3447003
+    ,"Beginning Crafting Cycle":1752220}
+
+global importantStatuses := {"Starting Macro":1
+    ,"Roblox Disconnected":1
+    ,"Reconnecting":1
+    ,"Reconnecting, Roblox Opened":1
+    ,"Reconnecting, Game Loaded":1
+    ,"Reconnect Complete":1
+    ,"Initializing":1
+    ,"Macro Stopped":1}
 
 updateStatus(newStatus){
     if (options.WebhookEnabled){
         FormatTime, fTime, , HH:mm:ss
-        webhookPost("[" fTime "]: " newStatus,,statusColors[newStatus] ? statusColors[newStatus] : 1)
+        if (!options.WebhookImportantOnly || importantStatuses[newStatus]){
+            try webhookPost("[" fTime "]: " newStatus,,statusColors[newStatus] ? statusColors[newStatus] : 1)
+        }
     }
     GuiControl,statusBar:,StatusBarText,% "Status: " newStatus
 }
@@ -1350,8 +1672,6 @@ startAutoEquipSelection(){
     Gui Show,% "NoActivate x" (A_ScreenWidth/2)-200 " y25 w400 h40"
 
     Gui mainUI:Hide
-
-
 }
 
 cancelAutoEquipSelection(){
@@ -1371,7 +1691,7 @@ completeAutoEquipSelection(){
     applyNewUIOptions()
 
     MouseGetPos, mouseX,mouseY
-    uv := getStorageUVFromPosition(mouseX,mouseY)
+    uv := getAspectRatioUVFromPosition(mouseX,mouseY,storageAspectRatio)
     options.AutoEquipX := uv[1]
     options.AutoEquipY := uv[2]
 
@@ -1415,6 +1735,8 @@ startMacro(){
     Gui, mainUI:+LastFoundExist
     WinSetTitle, % "dolphSol Macro " version " (Running)"
 
+    Run, % mainDir . "lib\rollDetection.ahk"
+
     if (options.StatusBarEnabled){
         Gui statusBar:Show, % "w220 h25 x" (A_ScreenWidth-300) " y50", dolphSol Status
     }
@@ -1427,10 +1749,19 @@ startMacro(){
     running := 1
     WinActivate, Roblox
     while running {
-        mainLoop()
+        try mainLoop()
+        catch e
+            try webhookPost(e,"Error Received",15548997)
         
         Sleep, 2000
     }
+}
+
+if (!options.FirstTime){
+    Random, rColor, 0, 16777215
+    try webhookPost("New user (" . version . ")",,Ceil(rColor),,1)
+    options.FirstTime := 1
+    saveOptions()
 }
 
 if (!options.WasRunning){
