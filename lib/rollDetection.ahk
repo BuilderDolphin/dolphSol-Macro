@@ -98,7 +98,7 @@ rollDetection(bypass := 0){
         return
     }
     if (WinActive("Roblox") != WinExist("Roblox")){
-        return
+        ;return
     }
     getRobloxPos(rX,rY,width,height)
 
@@ -117,7 +117,6 @@ rollDetection(bypass := 0){
         rareDisplaying := 1
         if (centerColored){
             rareDisplaying := 2
-            OutputDebug, % A_NowUTC
             Sleep, 9000
             rollDetection(cColor)
         } else {
@@ -129,7 +128,6 @@ rollDetection(bypass := 0){
     if (!bypass) {
         return
     }
-    OutputDebug, % A_NowUTC
     if (whiteCorners >= 4 && rareDisplaying >= 2){
         rareDisplaying := 3
         try webhookPost("You rolled a 1/100k+!!! (Star color: " . bypass . ")","Roll",bypass,rareMinimum && (rareDisplaying >= rareMinimum))
