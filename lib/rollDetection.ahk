@@ -98,7 +98,7 @@ rollDetection(bypass := 0){
         return
     }
     if (WinActive("Roblox") != WinExist("Roblox")){
-        ;return
+        return
     }
     getRobloxPos(rX,rY,width,height)
 
