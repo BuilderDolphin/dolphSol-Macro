@@ -121,7 +121,7 @@ rollDetection(bypass := 0){
             Sleep, 9000
             rollDetection(cColor)
         } else {
-            try webhookPost("You rolled a 1/1k+","Roll",0,rareDisplaying && (rareDisplaying >= rareMinimum))
+            try webhookPost("You rolled a 1/1k+","Roll",0,rareMinimum && (rareDisplaying >= rareMinimum))
             Sleep, 5000
             rareDisplaying := 0
         }
@@ -132,11 +132,11 @@ rollDetection(bypass := 0){
     OutputDebug, % A_NowUTC
     if (whiteCorners >= 4 && rareDisplaying >= 2){
         rareDisplaying := 3
-        try webhookPost("You rolled a 1/100k+!!! (Star color: " . bypass . ")","Roll",bypass,rareDisplaying && (rareDisplaying >= rareMinimum))
+        try webhookPost("You rolled a 1/100k+!!! (Star color: " . bypass . ")","Roll",bypass,rareMinimum && (rareDisplaying >= rareMinimum))
         Sleep, 6000
         rareDisplaying := 0
     } else if (rareDisplaying >= 2){
-        try webhookPost("You rolled a 1/10k+! (Star color: " . bypass . ")","Roll",bypass,rareDisplaying && (rareDisplaying >= rareMinimum))
+        try webhookPost("You rolled a 1/10k+! (Star color: " . bypass . ")","Roll",bypass,rareMinimum && (rareDisplaying >= rareMinimum))
         rareDisplaying := 0
     }
 }
