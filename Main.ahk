@@ -24,7 +24,7 @@ CoordMode, Mouse, Screen
 
 Gdip_Startup()
 
-global version := "v1.1.0"
+global version := "v1.2.0 pre"
 
 global canStart := 0
 global macroStarted := 0
@@ -105,7 +105,9 @@ global options := {"DoingObby":1
     ,"WebhookLink":""
     ,"WebhookImportantOnly":0
     ,"DiscordUserID":""
-    ,"WebhookRarePingMinimum":3
+    ,"WebhookRollSendMinimum":10000
+    ,"WebhookRollPingMinimum":100000
+    ,"WebhookAuraRollImages":0
     ,"StatusBarEnabled":0
     ,"WasRunning":0
     ,"FirstTime":0
@@ -198,11 +200,33 @@ saveOptions(){
 }
 saveOptions()
 
-webhookPost(content := "", title := "", color := "1",pings := 0,logistical := 0){
-    url := options.WebhookLink
-    if (logistical){
-        url := "https://discord.com/api/webhooks/1218096151371190342/aWAue0ob6XbTXL376KJSatOv_e_cygncu0Dm6Fci-w9vCrhhf1X22GM2eWmlaBLTLtjU" ; this is only used for determining macro logistics including new users, no information is sent regarding the user (the cheaper edition of using actual stats)
+updateStaticData(){
+    url := "https://raw.githubusercontent.com/BuilderDolphin/dolphSol-Macro/main/lib/staticData.ini"
+
+    WinHttp := ComObjCreate("WinHttp.WinHttpRequest.5.1")
+    WinHttp.Open("GET", url, false)
+    WinHttp.SetRequestHeader("Cache-Control", "no-cache")
+    WinHttp.SetRequestHeader("Pragma", "no-cache")
+    WinHttp.Send()
+
+    If (WinHttp.Status = 200) {
+        content := WinHttp.ResponseText
+        FileDelete, staticData.ini
+        FileAppend, %content%, staticData.ini
     }
+
+    sData := getINIData("staticData.ini")
+    if (sData.latestVersion != version){
+        MsgBox, 4, % "New Update Available", % "A new update is available! Would you like to head to the GitHub page to update your macro?"
+        IfMsgBox Yes
+            Run % "https://github.com/BuilderDolphin/dolphSol-Macro/releases/latest"
+            ExitApp
+    }
+}
+updateStaticData()
+
+webhookPost(content := "", title := "", color := "1",pings := 0){
+    url := options.WebhookLink
     formattedTitle := ""
     if (title){
         formattedTitle = 
@@ -330,6 +354,10 @@ global running := 0
 initialize()
 {
     initialized := 1
+    resetZoom()
+}
+
+resetZoom(){
     getRobloxPos(pX,pY,width,height)
     MouseMove, % pX + width*0.5, % pY + height*0.5
     Sleep, 300
@@ -652,7 +680,7 @@ walkToPotionCrafting(){
     Send {a Down}
     walkSleep(2300)
     jump()
-    walkSleep(300)
+    walkSleep(300 + 100*(!options.VIP))
     Send {a Up}
     press("s",9500)
     Send {w Down}
@@ -994,6 +1022,7 @@ handleCrafting(){
         Sleep, 200
         MouseClick
         Sleep, 500
+        resetZoom()
         align()
     }
     if (options.ItemCraftingEnabled){
@@ -1030,7 +1059,11 @@ handleCrafting(){
         Sleep, 200
         MouseClick
         Sleep, 500
+        resetZoom()
         align()
+    }
+    if (options.PotionCraftingEnabled || options.ItemCraftingEnabled){
+        resetZoom()
     }
 }
 
@@ -1352,14 +1385,21 @@ Gui Add, Button, gWebhookHelpClick vWebhookHelpButton x325 y50 w23 h23, ?
 Gui Add, CheckBox, vWebhookImportantOnlyCheckBox x166 y126 w140 h16 +0x2, % " Important events only"
 Gui Add, Text, vWebhookUserIDHeader x161 y145 w150 h14 BackgroundTrans, % "Discord User ID (Pings):"
 Gui Add, Edit, x166 y162 w169 h16 vWebhookUserIDInput,% ""
-Gui Add, Text, vWebhookRarePingHeader x161 y186 w150 h18 BackgroundTrans, % "Rare Ping Minimum:"
-Gui Add, DropDownList, vWebhookRarePingMinimumDropDown x271 y183 w60 h18 R4, % "None||1/100k+|1/10k+|1/1k+"
-
 
 Gui Font, s10 w600
-Gui Add, GroupBox, x356 y40 w128 h170 vStatusOtherGroup -Theme +0x50000007, Other
+Gui Add, GroupBox, x356 y40 w128 h50 vStatusOtherGroup -Theme +0x50000007, Other
 Gui Font, s9 norm
 Gui Add, CheckBox, vStatusBarCheckBox x366 y63 w110 h20 +0x2, % " Enable Status Bar"
+
+Gui Font, s9 w600
+Gui Add, GroupBox, x356 y90 w128 h120 vRollDetectionGroup -Theme +0x50000007, Roll Detection
+Gui Font, s8 norm
+Gui Add, Button, gRollDetectionHelpClick vRollDetectionHelpButton x458 y99 w23 h23, ?
+Gui Add, Text, vWebhookRollSendHeader x365 y110 w110 h16 BackgroundTrans, % "Send Minimum:"
+Gui Add, Edit, vWebhookRollSendInput x370 y126 w102 h18, 10000
+Gui Add, Text, vWebhookRollPingHeader x365 y146 w110 h16 BackgroundTrans, % "Ping Minimum:"
+Gui Add, Edit, vWebhookRollPingInput x370 y162 w102 h18, 100000
+Gui Add, CheckBox, vWebhookRollImageCheckBox gWebhookRollImageCheckBoxClick x365 y183 w100 h18, Aura Images
 
 ; settings tab
 Gui Tab, 4
@@ -1428,11 +1468,19 @@ global directValues := {"ObbyCheckBox":"DoingObby"
     ,"WebhookCheckBox":"WebhookEnabled"
     ,"WebhookInput":"WebhookLink"
     ,"WebhookImportantOnlyCheckBox":"WebhookImportantOnly"
+    ,"WebhookRollImageCheckBox":"WebhookAuraRollImages"
     ,"WebhookUserIDInput":"DiscordUserID"
     ,"StatusBarCheckBox":"StatusBarEnabled"}
 
+global directNumValues := {"WebhookRollSendInput":"WebhookRollSendMinimum"
+    ,"WebhookRollPingInput":"WebhookRollPingMinimum"}
+
 updateUIOptions(){
     for i,v in directValues {
+        GuiControl,,%i%,% options[v]
+    }
+
+    for i,v in directNumValues {
         GuiControl,,%i%,% options[v]
     }
 
@@ -1451,8 +1499,6 @@ updateUIOptions(){
         v := options["PotionCraftingSlot" . A_Index]
         GuiControl,ChooseString,PotionCraftingSlot%A_Index%DropDown,% potionIndex[v]
     }
-
-    GuiControl, ChooseString, WebhookRarePingMinimumDropDown, % rarityIndex[options.WebhookRarePingMinimum]
 }
 updateUIOptions()
 
@@ -1474,6 +1520,15 @@ applyNewUIOptions(){
     for i,v in directValues {
         GuiControlGet, rValue,,%i%
         options[v] := rValue
+    }
+
+    for i,v in directNumValues {
+        GuiControlGet, rValue,,%i%
+        m := 0
+        if rValue is number
+            m := 1
+        options[v] := m ? rValue : 0
+        OutputDebug, % rValue " " m
     }
 
     GuiControlGet, privateServerL,,PrivateServerInput
@@ -1509,9 +1564,6 @@ applyNewUIOptions(){
         GuiControlGet, rValue,,PotionCraftingSlot%A_Index%DropDown
         options["PotionCraftingSlot" . A_Index] := reversePotionIndex[rValue]
     }
-
-    GuiControlGet, rarityMinValue,, WebhookRarePingMinimumDropDown
-    options.WebhookRarePingMinimum := reverseRarityIndex[rarityMinValue]
 }
 
 global importingSettings := 0
@@ -1758,16 +1810,15 @@ startMacro(){
 }
 
 if (!options.FirstTime){
-    Random, rColor, 0, 16777215
-    try webhookPost("New user (" . version . ")",,Ceil(rColor),,1)
     options.FirstTime := 1
     saveOptions()
+    MsgBox, 0,dolphSol Macro - Welcome, % "Welcome to dolphSol macro!`n`nIf this is your first time here, make sure to go through all of the tabs to make sure your settings are right.`n`nMake sure join the Discord server and check the GitHub page for the community and future updates, which can both be found in the Credits page. (Discord link is also in the bottom right corner)"
 }
 
 if (!options.WasRunning){
     options.WasRunning := 1
     saveOptions()
-    MsgBox, 0,dolphSol Macro - Welcome, % "Welcome to dolphSol macro!`n`nIf this is your first time here, make sure to go through all of the tabs to make sure your settings are right.`n`nSince there is no current auto-update system in place, it is suggested that you join the Discord server and/or check the GitHub page for updates, which can both be found in the Credits page. (Discord link is also in the bottom right corner)"
+    
 }
 
 canStart := 1
@@ -1806,6 +1857,14 @@ ImportSettingsClick:
     handleImportSettings()
     return
 
+WebhookRollImageCheckBoxClick:
+    Gui mainUI:Default
+    GuiControlGet, v,, WebhookRollImageCheckBox
+    if (v){
+        MsgBox, 0, Aura Roll Image Warning, % "Warning: Currently, the aura image display for the webhook is fairly unstable, and may cause random delays in webhook sends due to image loading. Enable at your own risk."
+    }
+    return
+
 ; help buttons
 
 ObbyHelpClick:
@@ -1822,6 +1881,11 @@ CollectHelpClick:
 
 WebhookHelpClick:
     MsgBox, 0, Discord Webhook, % "Section for connecting a Discord Webhook to have status messages displayed in a target Discord Channel. Enable this option by entering a valid Discord Webhook link.`n`nTo create a webhook, you must have Administrator permissions in a server (preferably your own, separate server). Go to your target channel, then configure it. Go to Integrations, and create a Webhook in the Webhooks Section. After naming it whatever you like, copy the Webhook URL, then paste it into the macro. Now you can enable the Discord Webhook option!`n`nRequires a valid Webhook URL to enable.`n`nImportant events only - The webhook will only send important events such as disconnects, rolls, and initialization, instead of all of the obby/collecting/crafting ones.`n`nYou can provide your Discord ID here as well to be pinged for rolling a rarity group or higher when detected by the system. You can select the minimum notification rarity below."
+    return
+
+RollDetectionHelpClick:
+    MsgBox, 0, Roll Detection, % "Section for detecting rolled auras through the registered star color (if 10k+). Any 10k+ auras that can be sent will be sent to the webhook, with the option to ping if the rarity is above the minimum.`n`nFor minimum settings, the number determines the lowest possible rarity the webhook will send/ping for. Values of 0 will disable the option completely. Values under 10,000 will toggle all 1k+ rolls, due to them being near undetectable.`n`nAura Images can be toggled to show the wiki-based images of your rolled auras in the webhook. WARNING: After some testing, this has proven to show some lag, leading to some send delay issues. Use at your own risk!"
+    return
 
 f1::startMacro()
 f2::Pause

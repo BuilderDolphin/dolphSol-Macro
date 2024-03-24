@@ -10,18 +10,28 @@ RegExMatch(A_ScriptDir, "(.*)\\", mainDir)
 
 global configPath := mainDir . "settings\config.ini"
 
+
+global webhookEnabled := 0
 global webhookURL := ""
 global discordID := ""
-global rareMinimum := 0
+global sendMinimum := 10000
+global pingMinimum := 100000
+global auraImages := 0
 
 global rareDisplaying := 0
 
 FileRead, retrieved, %configPath%
 
 if (!ErrorLevel){
+    RegExMatch(retrieved, "(?<=WebhookEnabled=)(.*)", webhookEnabled)
     RegExMatch(retrieved, "(?<=WebhookLink=)(.*)", webhookURL)
+    if (!webhookEnabled || !webhookURL){
+        ExitApp
+    }
     RegExMatch(retrieved, "(?<=DiscordUserID=)(.*)", discordID)
-    RegExMatch(retrieved, "(?<=WebhookRarePingMinimum=)(.*)", rareMinimum)
+    RegExMatch(retrieved, "(?<=WebhookRollSendMinimum=)(.*)", sendMinimum)
+    RegExMatch(retrieved, "(?<=WebhookRollPingMinimum=)(.*)", pingMinimum)
+    RegExMatch(retrieved, "(?<=WebhookAuraRollImages=)(.*)", auraImages)
 } else {
     MsgBox, An error occurred while reading %configPath% data, rarity webhook messages will not be sent.
     return
@@ -58,7 +68,49 @@ compareColors(color1, color2) ; determines how far apart 2 colors are
     return dist
 }
 
-webhookPost(content := "", title := "", color := "1",pings := 0){
+getINIData(path){
+    FileRead, retrieved, %path%
+
+    retrievedData := {}
+    readingPoint := 0
+
+    if (!ErrorLevel){
+        ls := StrSplit(retrieved,"`r`n")
+        for i,v in ls {
+            isHeader := RegExMatch(v,"\[(.*)]")
+            if (v && readingPoint && !isHeader){
+                RegExMatch(v,"(.*)(?==)",index)
+                RegExMatch(v,"(?<==)(.*)",value)
+                if (index){
+                    retrievedData[index] := value
+                }
+            } else if (isHeader){
+                readingPoint := 1
+            }
+        }
+    } else {
+        MsgBox, An error occurred while reading %path% data, please review the file.
+        return
+    }
+    return retrievedData
+}
+
+commaFormat(num){
+    len := StrLen(num)
+    final := ""
+    Loop %len% {
+        char := (len-A_Index)+1
+        if (Mod(A_Index-1,3) = 0 && A_Index <= len && A_Index-1){
+            final := "," . final
+        }
+        final := SubStr(num, char, 1) . final
+    }
+    return final
+}
+
+global staticData := getINIData("staticData.ini")
+
+webhookRollPost(content := "", title := "", color := "1", image := "", footer := "",pings := 0){
     url := webhookURL
     formattedTitle := ""
     if (title){
@@ -73,6 +125,26 @@ webhookPost(content := "", title := "", color := "1",pings := 0){
         pingContent := "<@" . discordID . ">"
     }
 
+    formattedImage := ""
+    if (image){
+        formattedImage =
+        (
+        "image": {
+            "url": "%image%"
+        },
+        )
+    }
+
+    formattedFooter := ""
+    if (footer){
+        formattedFooter =
+        (
+            "footer":{
+                "text":"Detected Color ID: %footer%"
+            },
+        )
+    }
+
     postdata =
     (
     {
@@ -81,6 +153,8 @@ webhookPost(content := "", title := "", color := "1",pings := 0){
         {
         %formattedTitle%
         "description": "%content%",
+        %formattedImage%
+        %formattedFooter%
         "color": %color%
         }
     ]
@@ -90,7 +164,42 @@ webhookPost(content := "", title := "", color := "1",pings := 0){
     WebRequest.Open("POST", url, false)
     WebRequest.SetRequestHeader("Content-Type", "application/json")
     WebRequest.SetProxy(false)
-    try WebRequest.Send(postdata)  
+    WebRequest.Send(postdata)
+}
+
+getAuraInfo(starColor := 0, is100k := 0){
+    tName := staticData["name" starColor]
+    if (tName){
+        tImage := ""
+        tRarity := 0
+        if (staticData["nameMutation100k" starColor] && is100k){
+            tName := staticData["nameMutation100k" starColor]
+            tImage := staticData["imageMutation100k" starColor]
+            tRarity := staticData["rarityMutation100k" starColor]
+        } else if (staticData["nameMutation10m" starColor] && !is100k){
+            tName := staticData["nameMutation10m" starColor]
+            tImage := staticData["imageMutation10m" starColor]
+            tRarity := staticData["rarityMutation10m" starColor]
+        } else {
+            tImage := staticData["image" starColor]
+            tRarity := staticData["rarity" starColor]
+        }
+        return {name:tName,image:tImage,rarity:tRarity,color:starColor}
+    } else {
+        lowestCompNum := 0xffffff * 3
+        targetColor := 0
+        for i,v in staticData {
+            RegExMatch(i, "(?<=name)(\d+)",targetId)
+            if (targetId){
+                comp := compareColors(starColor,targetId)
+                if (comp < lowestCompNum){
+                    lowestCompNum := comp
+                    targetColor := targetId
+                }
+            }
+        }
+        return getAuraInfo(targetColor,is100k)
+    }
 }
 
 rollDetection(bypass := 0){
@@ -102,7 +211,7 @@ rollDetection(bypass := 0){
     }
     getRobloxPos(rX,rY,width,height)
 
-    scanPoints := [[rX,rY],[rX+width-1,rY],[rX,rY+height-1],[rX+width-1,rY+height-1]]
+    scanPoints := [[rX+1,rY+1],[rX+width-2,rY+1],[rX+1,rY+height-2],[rX+width-2,rY+height-2]]
     blackCorners := 0
     whiteCorners := 0
     for i,point in scanPoints {
@@ -117,10 +226,22 @@ rollDetection(bypass := 0){
         rareDisplaying := 1
         if (centerColored){
             rareDisplaying := 2
-            Sleep, 9000
+            Sleep, 500
+            blackCorners := 0
+            for i,point in scanPoints {
+                PixelGetColor, pColor, % point[1], % point[2], RGB
+                blackCorners += compareColors(pColor,0x000000) < 8
+            }
+            if (blackCorners < 4){
+                ; false detect
+                rareDisplaying := 0
+                return
+            }
+            PixelGetColor, cColor, % rX + width*0.5, % rY + height*0.5, RGB
+            Sleep, 8500
             rollDetection(cColor)
-        } else {
-            try webhookPost("You rolled a 1/1k+","Roll",0,rareMinimum && (rareDisplaying >= rareMinimum))
+        } else if (sendMinimum && sendMinimum < 10000) {
+            try webhookRollPost("You rolled a 1/1k+","Roll",0,,,pingMinimum && pingMinimum < 10000)
             Sleep, 5000
             rareDisplaying := 0
         }
@@ -130,11 +251,17 @@ rollDetection(bypass := 0){
     }
     if (whiteCorners >= 4 && rareDisplaying >= 2){
         rareDisplaying := 3
-        try webhookPost("You rolled a 1/100k+!!! (Star color: " . bypass . ")","Roll",bypass,rareMinimum && (rareDisplaying >= rareMinimum))
+        auraInfo := getAuraInfo(bypass,1)
+        if (sendMinimum && sendMinimum <= auraInfo.rarity){
+            try webhookRollPost("# You rolled " auraInfo.name "!\n> ### 1/" commaFormat(auraInfo.rarity) " Chance","Roll",auraInfo.color,auraImages ? auraInfo.image : 0,bypass,pingMinimum && pingMinimum <= auraInfo.rarity)
+        }
         Sleep, 6000
         rareDisplaying := 0
     } else if (rareDisplaying >= 2){
-        try webhookPost("You rolled a 1/10k+! (Star color: " . bypass . ")","Roll",bypass,rareMinimum && (rareDisplaying >= rareMinimum))
+        auraInfo := getAuraInfo(bypass,0)
+        if (sendMinimum && sendMinimum <= auraInfo.rarity){
+            try webhookRollPost("# You rolled " auraInfo.name "!\n> ### 1/" commaFormat(auraInfo.rarity) " Chance","Roll",auraInfo.color,auraImages ? auraInfo.image : 0,bypass,pingMinimum && pingMinimum <= auraInfo.rarity)
+        }
         rareDisplaying := 0
     }
 }
