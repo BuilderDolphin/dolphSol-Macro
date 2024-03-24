@@ -55,7 +55,7 @@ global potionIndex := {0:"None"
     ,8:"Universe Potion I"}
 
 
-global craftingInfo := {"Gilded Coin":{slot:9,addSlots:1,maxes:[1],attempts:3,addedAttempts:1/10}
+global craftingInfo := {"Gilded Coin":{slot:9,addSlots:1,maxes:[1],attempts:4,addedAttempts:1/5}
     ,"Jackpot Gauntlet":{slot:7,addSlots:4,maxes:[7,77,77,777],attempts:1}
     ,"Fortune Potion I":{slot:1,subSlot:1,addSlots:4,maxes:[5,1,5,1],attempts:2}
     ,"Fortune Potion II":{slot:1,subSlot:2,addSlots:5,maxes:[1,10,5,10,2],attempts:2}
