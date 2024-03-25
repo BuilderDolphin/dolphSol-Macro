@@ -24,7 +24,7 @@ CoordMode, Mouse, Screen
 
 Gdip_Startup()
 
-global version := "v1.2.0 pre"
+global version := "v1.2.0 pre 2"
 
 global canStart := 0
 global macroStarted := 0
@@ -129,6 +129,8 @@ global options := {"DoingObby":1
     ,"ObbyAttempts":0
     ,"CollectionLoops":0}
 
+global sData := {}
+
 global privateServerPre := "https://www.roblox.com/games/15532962292/Sols-RNG?privateServerLinkCode="
 
 getINIData(path){
@@ -200,6 +202,11 @@ saveOptions(){
 }
 saveOptions()
 
+updateYesClicked(){
+    Run % (sData.versionLink ? sData.versionLink : "https://github.com/BuilderDolphin/dolphSol-Macro/releases/latest")
+    ExitApp
+}
+
 updateStaticData(){
     url := "https://raw.githubusercontent.com/BuilderDolphin/dolphSol-Macro/main/lib/staticData.ini"
 
@@ -217,10 +224,10 @@ updateStaticData(){
 
     sData := getINIData("staticData.ini")
     if (sData.latestVersion != version){
-        MsgBox, 4, % "New Update Available", % "A new update is available! Would you like to head to the GitHub page to update your macro?"
+        MsgBox, 4, % "New Update Available", % "A new update is available! Would you like to head to the GitHub page to update your macro?" . (sData.updateNotes ? ("`n`nUpdate Notes:`n" . sData.updateNotes) : "")
+        
         IfMsgBox Yes
-            Run % "https://github.com/BuilderDolphin/dolphSol-Macro/releases/latest"
-            ExitApp
+            updateYesClicked()
     }
 }
 updateStaticData()
@@ -1528,7 +1535,6 @@ applyNewUIOptions(){
         if rValue is number
             m := 1
         options[v] := m ? rValue : 0
-        OutputDebug, % rValue " " m
     }
 
     GuiControlGet, privateServerL,,PrivateServerInput

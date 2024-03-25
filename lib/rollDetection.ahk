@@ -232,16 +232,19 @@ rollDetection(bypass := 0){
                 PixelGetColor, pColor, % point[1], % point[2], RGB
                 blackCorners += compareColors(pColor,0x000000) < 8
             }
-            if (blackCorners < 4){
+            PixelGetColor, cColor, % rX + width*0.5, % rY + height*0.5, RGB
+            if (blackCorners < 4 || cColor <= 16){
                 ; false detect
                 rareDisplaying := 0
                 return
             }
-            PixelGetColor, cColor, % rX + width*0.5, % rY + height*0.5, RGB
-            Sleep, 8500
+            
+            Sleep, 8750
             rollDetection(cColor)
-        } else if (sendMinimum && sendMinimum < 10000) {
-            try webhookRollPost("You rolled a 1/1k+","Roll",0,,,pingMinimum && pingMinimum < 10000)
+        } else {
+            if (sendMinimum && sendMinimum < 10000) {
+                webhookRollPost("You rolled a 1/1k+","Roll",0,,,pingMinimum && pingMinimum < 10000)
+            }
             Sleep, 5000
             rareDisplaying := 0
         }
@@ -249,18 +252,22 @@ rollDetection(bypass := 0){
     if (!bypass) {
         return
     }
-    if (whiteCorners >= 4 && rareDisplaying >= 2){
+    if (whiteCorners >= 3 && rareDisplaying >= 2){
         rareDisplaying := 3
         auraInfo := getAuraInfo(bypass,1)
         if (sendMinimum && sendMinimum <= auraInfo.rarity){
-            try webhookRollPost("# You rolled " auraInfo.name "!\n> ### 1/" commaFormat(auraInfo.rarity) " Chance","Roll",auraInfo.color,auraImages ? auraInfo.image : 0,bypass,pingMinimum && pingMinimum <= auraInfo.rarity)
+            webhookRollPost("# You rolled " auraInfo.name "!\n> ### 1/" commaFormat(auraInfo.rarity) " Chance","Roll",auraInfo.color,auraImages ? auraInfo.image : 0,bypass,pingMinimum && pingMinimum <= auraInfo.rarity)
         }
         Sleep, 6000
         rareDisplaying := 0
     } else if (rareDisplaying >= 2){
         auraInfo := getAuraInfo(bypass,0)
+        if ((auraInfo.rarity >= 99999) && (auraInfo.rarity < 10000000)){
+            rareDisplaying := 0
+            return
+        }
         if (sendMinimum && sendMinimum <= auraInfo.rarity){
-            try webhookRollPost("# You rolled " auraInfo.name "!\n> ### 1/" commaFormat(auraInfo.rarity) " Chance","Roll",auraInfo.color,auraImages ? auraInfo.image : 0,bypass,pingMinimum && pingMinimum <= auraInfo.rarity)
+            webhookRollPost("# You rolled " auraInfo.name "!\n> ### 1/" commaFormat(auraInfo.rarity) " Chance","Roll",auraInfo.color,auraImages ? auraInfo.image : 0,bypass,pingMinimum && pingMinimum <= auraInfo.rarity)
         }
         rareDisplaying := 0
     }
