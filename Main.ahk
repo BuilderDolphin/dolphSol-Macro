@@ -29,7 +29,7 @@ if (RegExMatch(A_ScriptDir,"\.zip")){
 
 Gdip_Startup()
 
-global version := "v1.2.0 pre 3"
+global version := "v1.2.0"
 
 global canStart := 0
 global macroStarted := 0
