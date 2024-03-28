@@ -17,6 +17,11 @@ SetWorkingDir, % A_ScriptDir "\lib"
 CoordMode, Pixel, Screen
 CoordMode, Mouse, Screen
 
+if (RegExMatch(A_ScriptDir,"\.zip")){
+    MsgBox, 0, % "Running From ZIP", % "You are attempting to run the script from a ZIP file.`n`nPlease Extract/Unzip the file first, then run the script in the extracted folder."
+    ExitApp
+}
+
 #Include %A_ScriptDir%\lib
 #Include ocr.ahk
 #Include Gdip_All.ahk
@@ -24,11 +29,13 @@ CoordMode, Mouse, Screen
 
 Gdip_Startup()
 
-global version := "v1.2.0 pre 2"
+global version := "v1.2.0 pre 3"
 
 global canStart := 0
 global macroStarted := 0
 global reconnecting := 0
+
+global isSpawnCentered := 0
 
 obbyCooldown := 120 ; 120 seconds
 lastObby := A_TickCount - obbyCooldown*1000
@@ -41,6 +48,7 @@ statusEffectSpace := 5
 global mainDir := A_ScriptDir "\"
 
 configPath := mainDir . "settings\config.ini"
+global ssPath := mainDir . "images\ss.png"
 
 configHeader := "; dolphSol Settings`n;   Do not put spaces between equals`n;   Additions may break this file and the macro overall, please be cautious`n;   If you mess up this file, clear it entirely and restart the macro`n`n[Options]`r`n"
 
@@ -119,9 +127,9 @@ global options := {"DoingObby":1
     ,"PotionCraftingSlot1":0
     ,"PotionCraftingSlot2":0
     ,"PotionCraftingSlot3":0
-    ,"LastCraftTime":0
-    ; ,"WebhookInvScreenshotEnabled":1 ; one day maybe when i figure out how to do discord screenshots
-    ; ,"WebhookInvScreenshotInterval":60
+    ,"LastCraftSession":0
+    ,"InvScreenshotsEnabled":1
+    ,"LastInvScreenshot":0
     ; not really options but stats i guess
     ,"RunTime":0
     ,"Disconnects":0
@@ -232,39 +240,140 @@ updateStaticData(){
 }
 updateStaticData()
 
-webhookPost(content := "", title := "", color := "1",pings := 0){
-    url := options.WebhookLink
-    formattedTitle := ""
-    if (title){
-        formattedTitle = 
-        (
-            "title": "%title%",
-        )
+; CreateFormData() by tmplinshi, AHK Topic: https://autohotkey.com/boards/viewtopic.php?t=7647
+; Thanks to Coco: https://autohotkey.com/boards/viewtopic.php?p=41731#p41731
+; Modified version by SKAN, 09/May/2016
+
+CreateFormData(ByRef retData, ByRef retHeader, objParam) {
+	New CreateFormData(retData, retHeader, objParam)
+}
+
+Class CreateFormData {
+
+	__New(ByRef retData, ByRef retHeader, objParam) {
+
+		Local CRLF := "`r`n", i, k, v, str, pvData
+		; Create a random Boundary
+		Local Boundary := this.RandomBoundary()
+		Local BoundaryLine := "------------------------------" . Boundary
+
+    this.Len := 0 ; GMEM_ZEROINIT|GMEM_FIXED = 0x40
+    this.Ptr := DllCall( "GlobalAlloc", "UInt",0x40, "UInt",1, "Ptr"  )          ; allocate global memory
+
+		; Loop input paramters
+		For k, v in objParam
+		{
+			If IsObject(v) {
+				For i, FileName in v
+				{
+					str := BoundaryLine . CRLF
+					     . "Content-Disposition: form-data; name=""" . k . """; filename=""" . FileName . """" . CRLF
+					     . "Content-Type: " . this.MimeType(FileName) . CRLF . CRLF
+          this.StrPutUTF8( str )
+          this.LoadFromFile( Filename )
+          this.StrPutUTF8( CRLF )
+				}
+			} Else {
+				str := BoundaryLine . CRLF
+				     . "Content-Disposition: form-data; name=""" . k """" . CRLF . CRLF
+				     . v . CRLF
+        this.StrPutUTF8( str )
+			}
+		}
+
+		this.StrPutUTF8( BoundaryLine . "--" . CRLF )
+
+    ; Create a bytearray and copy data in to it.
+    retData := ComObjArray( 0x11, this.Len ) ; Create SAFEARRAY = VT_ARRAY|VT_UI1
+    pvData  := NumGet( ComObjValue( retData ) + 8 + A_PtrSize )
+    DllCall( "RtlMoveMemory", "Ptr",pvData, "Ptr",this.Ptr, "Ptr",this.Len )
+
+    this.Ptr := DllCall( "GlobalFree", "Ptr",this.Ptr, "Ptr" )                   ; free global memory 
+
+    retHeader := "multipart/form-data; boundary=----------------------------" . Boundary
+	}
+
+  StrPutUTF8( str ) {
+    Local ReqSz := StrPut( str, "utf-8" ) - 1
+    this.Len += ReqSz                                  ; GMEM_ZEROINIT|GMEM_MOVEABLE = 0x42
+    this.Ptr := DllCall( "GlobalReAlloc", "Ptr",this.Ptr, "UInt",this.len + 1, "UInt", 0x42 )   
+    StrPut( str, this.Ptr + this.len - ReqSz, ReqSz, "utf-8" )
+  }
+  
+  LoadFromFile( Filename ) {
+    Local objFile := FileOpen( FileName, "r" )
+    this.Len += objFile.Length                     ; GMEM_ZEROINIT|GMEM_MOVEABLE = 0x42 
+    this.Ptr := DllCall( "GlobalReAlloc", "Ptr",this.Ptr, "UInt",this.len, "UInt", 0x42 )
+    objFile.RawRead( this.Ptr + this.Len - objFile.length, objFile.length )
+    objFile.Close()       
+  }
+
+	RandomBoundary() {
+		str := "0|1|2|3|4|5|6|7|8|9|a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z"
+		Sort, str, D| Random
+		str := StrReplace(str, "|")
+		Return SubStr(str, 1, 12)
+	}
+
+	MimeType(FileName) {
+		n := FileOpen(FileName, "r").ReadUInt()
+		Return (n        = 0x474E5089) ? "image/png"
+		     : (n        = 0x38464947) ? "image/gif"
+		     : (n&0xFFFF = 0x4D42    ) ? "image/bmp"
+		     : (n&0xFFFF = 0xD8FF    ) ? "image/jpeg"
+		     : (n&0xFFFF = 0x4949    ) ? "image/tiff"
+		     : (n&0xFFFF = 0x4D4D    ) ? "image/tiff"
+		     : "application/octet-stream"
+	}
+
+}
+
+webhookPost(data := 0){
+    data := data ? data : {}
+
+    url := options.webhookLink
+
+    if (data.pings){
+        data.content := data.content ? data.content " <@" options.DiscordUserID ">" : "<@" options.DiscordUserID ">"
     }
 
-    pingContent := ""
-    if (pings){
-        pingContent := "<@" . options.DiscordUserID . ">"
+    payload_json := "
+		(LTrim Join
+		{
+			""content"": """ data.content """,
+			""embeds"": [{
+                " (data.embedAuthor ? """author"": {""name"": """ data.embedAuthor """" (data.embedAuthorImage ? ",""icon_url"": """ data.embedAuthorImage """" : "") "}," : "") "
+                " (data.embedTitle ? """title"": """ data.embedTitle """," : "") "
+				""description"": """ data.embedContent """,
+                " (data.embedThumbnail ? """thumbnail"": {""url"": """ data.embedThumbnail """}," : "") "
+                " (data.embedImage ? """image"": {""url"": """ data.embedImage """}," : "") "
+                " (data.embedFooter ? """footer"": {""text"": """ data.embedFooter """}," : "") "
+				""color"": """ (data.embedColor ? data.embedColor : 0) """
+			}]
+		}
+		)"
+
+    if (!data.embedContent || data.noEmbed)
+        payload_json := RegExReplace(payload_json, ",.*""embeds.*}]", "")
+    
+
+    objParam := {payload_json: payload_json}
+
+    for i,v in (data.files ? data.files : []) {
+        objParam["file" i] := [v]
     }
 
-    postdata =
-    (
-    {
-    "content": "%pingContent%",
-    "embeds": [
-        {
-        %formattedTitle%
-        "description": "%content%",
-        "color": %color%
-        }
-    ]
-    }
-    ) ; Use https://leovoel.github.io/embed-visualizer/ to generate above webhook code
+    CreateFormData(postdata,hdr_ContentType,objParam)
+
     WebRequest := ComObjCreate("WinHttp.WinHttpRequest.5.1")
-    WebRequest.Open("POST", url, false)
-    WebRequest.SetRequestHeader("Content-Type", "application/json")
-    WebRequest.SetProxy(false)
-    try WebRequest.Send(postdata)  
+    WebRequest.Open("POST", url, true)
+    WebRequest.SetRequestHeader("User-Agent", "Mozilla/5.0 (Windows NT 6.1; WOW64; Trident/7.0; rv:11.0) like Gecko")
+    WebRequest.SetRequestHeader("Content-Type", hdr_ContentType)
+    WebRequest.SetRequestHeader("Pragma", "no-cache")
+    WebRequest.SetRequestHeader("Cache-Control", "no-cache, no-store")
+    WebRequest.SetRequestHeader("If-Modified-Since", "Sat, 1 Jan 2000 00:00:00 GMT")
+    WebRequest.Send(postdata)
+    WebRequest.WaitForResponse()
 }
 
 global possibleDowns := ["w","a","s","d","Space","Enter","Esc","r"]
@@ -283,7 +392,7 @@ stop(terminate := 0) {
     }
 
     DetectHiddenWindows, On
-    WinClose, % mainDir . "lib\rollDetection.ahk"
+    WinClose, % mainDir . "lib\status.ahk"
 
     applyNewUIOptions()
     saveOptions()
@@ -365,8 +474,18 @@ initialize()
 }
 
 resetZoom(){
+    Loop 2 {
+        if (checkInvOpen()){
+            clickMenuButton(1)
+        } else {
+            break
+        }
+        Sleep, 400
+    }
+
     getRobloxPos(pX,pY,width,height)
     MouseMove, % pX + width*0.5, % pY + height*0.5
+
     Sleep, 300
     MouseClick
     Sleep, 250
@@ -383,11 +502,7 @@ resetZoom(){
 
 ; Paths
 
-align(fails := 0){ ; align v2
-    updateStatus("Aligning Character")
-    reset()
-    Sleep, 5000
-
+alignCamera(){
     closeChat()
     Sleep, 200
 
@@ -398,32 +513,50 @@ align(fails := 0){ ; align v2
     Sleep, 200
     MouseClick
     Sleep, 500
+}
+
+align(forCollection := 0){ ; align v2
+    updateStatus("Aligning Character")
+    reset()
+    Sleep, 4000
+
+    alignCamera()
 
     Send, {w Down}
     Send, {a Down}
-    walkSleep(2750)
+    walkSleep(2500)
     Send, {a Up}
-    walkSleep(1000)
+    walkSleep(750)
     Send, {w Up}
-    walkSleep(50)
-    press("s",2500)
-    walkSleep(50)
+    Sleep, 50
+    if (forCollection){
+        Send, {s Down}
+        Send, {d Down}
+        walkSleep(1000)
+        Send, {s Up}
+        walkSleep(100)
+        Send, {d Up}
+        Sleep, 50
+    } else {
+        press("s",2500)
+        Sleep, 50
+    }
 }
 
 collect(num){
     if (!options["ItemSpot" . num]){
         return
     }
-    Loop, 3 
+    Loop, 4 
     {
-        press("f")
-        Sleep, 200
+        Send {f}
+        Sleep, 75
     }
-    press("e")
-    Sleep, 200
+    Send {e}
+    Sleep, 50
 }
 
-searchForItems(){
+searchForItemsOld(){
     updateStatus("Searching for Items")
     ; item 1
     updateStatus("Searching for Items (#1)")
@@ -527,6 +660,128 @@ searchForItems(){
     press("d",150)
     collect(7)
     
+
+    options.CollectionLoops += 1
+}
+
+searchForItems(){
+    updateStatus("Searching for Items")
+    Send {d Down}
+    walkSleep(2500)
+    Send {s Down}
+    walkSleep(1000)
+    Send {s Up}
+    walkSleep(150)
+    Send {d Up}
+    collect(1)
+
+    Send {a Down}
+    Send {w Down}
+    walkSleep(300)
+    Send {a Up}
+    walkSleep(3500)
+    Send {d Down}
+    walkSleep(300)
+    Send {d Up}
+    Send {w Up}
+    collect(2)
+
+    ; void hop
+    Send {d Down}
+    walkSleep(400)
+    Send {d Up}
+    Sleep, 1750
+    Send {w Down}
+    walkSleep(300)
+    jump()
+    walkSleep(350)
+    Send {a Down}
+    walkSleep(250)
+    jump()
+    walkSleep(350)
+    Send {w Up}
+    walkSleep(250)
+    jump()
+    walkSleep(350)
+    Send {a Up}
+    Send {w Down}
+    walkSleep(100)
+    jump()
+    walkSleep(350)
+    Send {d Down}
+    walkSleep(750)
+    Send {w Up}
+    Send {d Up}
+    collect(3)
+
+    Send, {a Down}
+    walkSleep(900)
+    Send {a Up}
+    Send {w Down}
+    walkSleep(100)
+    jump()
+    walkSleep(800)
+    Send {w Up}
+    Send {d Down}
+    walkSleep(500)
+    Send {w Down}
+    walkSleep(250)
+    Send, {w Up}
+    Send, {d Up}
+    Send {Right Down}
+    Sleep, 650
+    Send {Right Up}
+    collect(4)
+
+    alignCamera()
+    press("a",850)
+    Send {s Down}
+    walkSleep(4000)
+    Send {a Down}
+    walkSleep(1550)
+    Send {a Up}
+    walkSleep(600)
+    Send {s Up}
+    collect(5)
+
+    Send {a Down}
+    jump()
+    walkSleep(300)
+    Send {a Up}
+    press("s",4000)
+    press("d",250)
+    Send {Left Down}
+    Sleep, 1000
+    Send {Left Up}
+    collect(6)
+
+    alignCamera()
+    Send {s Down}
+    walkSleep(2500)
+    press("d",500)
+    Send {s Up}
+    press("w",200)
+    Send {d Down}
+    walkSleep(100)
+    jump()
+    walkSleep(1000)
+    Send {s Down}
+    walkSleep(400)
+    Send {s Up}
+    jump()
+    walkSleep(1000)
+    Send {s Down}
+    Send {d Up}
+    walkSleep(300)
+    Send {Space Down}
+    walkSleep(1100)
+    Send {Space Up}
+    Send {s Up}
+    Sleep, 500 ; normal bc waiting for jump to land
+    press("d",400)
+    press("w",850)
+    press("d",150)
+    collect(7)
 
     options.CollectionLoops += 1
 }
@@ -715,6 +970,13 @@ closeChat(){
     }
 }
 
+checkInvOpen(){
+    checkPos := getPositionFromAspectRatioUV(-1.209440, -0.695182,storageAspectRatio)
+    PixelGetColor, checkC, % checkPos[1], % checkPos[2], RGB
+    alreadyOpen := compareColors(checkC,0xffffff) < 8
+    return alreadyOpen
+}
+
 mouseActions(){
     updateStatus("Performing Mouse Actions")
 
@@ -723,10 +985,7 @@ mouseActions(){
     ; re equip
     if (options.AutoEquipEnabled){
         closeChat()
-
-        checkPos := getPositionFromAspectRatioUV(-1.209440, -0.695182,storageAspectRatio)
-        PixelGetColor, checkC, % checkPos[1], % checkPos[2], RGB
-        alreadyOpen := compareColors(checkC,0xffffff) < 8
+        alreadyOpen := checkInvOpen()
 
         if (!alreadyOpen){
             clickMenuButton(1)
@@ -1004,6 +1263,7 @@ handleCrafting(){
         updateStatus("Beginning Crafting Cycle")
     }
     if (options.PotionCraftingEnabled){
+        align()
         updateStatus("Walking to Stella's Cave (Crafting)")
         walkToPotionCrafting()
         Sleep, 2000
@@ -1030,9 +1290,9 @@ handleCrafting(){
         MouseClick
         Sleep, 500
         resetZoom()
-        align()
     }
     if (options.ItemCraftingEnabled){
+        align()
         updateStatus("Walking to Jake's Shop (Crafting)")
         walkToJakesShop()
         Sleep, 100
@@ -1067,13 +1327,72 @@ handleCrafting(){
         MouseClick
         Sleep, 500
         resetZoom()
-        align()
-    }
-    if (options.PotionCraftingEnabled || options.ItemCraftingEnabled){
-        resetZoom()
     }
 }
 
+waitForInvVisible(){
+    Loop 20 {
+        alreadyOpen := checkInvOpen()
+        if (alreadyOpen)
+            break
+        Sleep, 500
+    }
+}
+
+screenshotInventories(){ ; from all closed
+    updateStatus("Inventory screenshots")
+    topLeft := getPositionFromAspectRatioUV(-1.3,-0.9,storageAspectRatio)
+    bottomRight := getPositionFromAspectRatioUV(1.3,0.75,storageAspectRatio)
+    totalSize := [bottomRight[1]-topLeft[1]+1,bottomRight[2]-topLeft[2]+1]
+
+    closeChat()
+
+    clickMenuButton(1)
+    Sleep, 200
+
+    waitForInvVisible()
+
+    ssMap := Gdip_BitmapFromScreen(topLeft[1] "|" topLeft[2] "|" totalSize[1] "|" totalSize[2])
+    Gdip_SaveBitmapToFile(ssMap,ssPath)
+    Gdip_DisposeBitmap(ssMap)
+    try webhookPost({content: "> ## Aura Storage Screenshot",files:[ssPath]})
+
+    clickMenuButton(3)
+    Sleep, 200
+
+    waitForInvVisible()
+
+    ssMap := Gdip_BitmapFromScreen(topLeft[1] "|" topLeft[2] "|" totalSize[1] "|" totalSize[2])
+    Gdip_SaveBitmapToFile(ssMap,ssPath)
+    Gdip_DisposeBitmap(ssMap)
+    try webhookPost({content: "> ## Item Inventory Screenshot",files:[ssPath]})
+
+    MouseClick
+}
+
+checkBottomLeft(){
+    getRobloxPos(rX,rY,width,height)
+
+    start := [rX, rY + height*0.86]
+    finish := [rX + width*0.14, rY + height]
+    totalSize := [finish[1]-start[1]+1, finish[2]-start[2]+1]
+    readMap := Gdip_BitmapFromScreen(start[1] "|" start[2] "|" totalSize[1] "|" totalSize[2])
+    ;Gdip_ResizeBitmap(readMap,500,500,1)
+    readEffect1 := Gdip_CreateEffect(7,100,-100,50)
+    readEffect2 := Gdip_CreateEffect(2,10,100)
+    Gdip_BitmapApplyEffect(readMap,readEffect1)
+    Gdip_BitmapApplyEffect(readMap,readEffect2)
+    Gdip_SaveBitmapToFile(readMap,ssPath)
+    OutputDebug, % ocrFromBitmap(readMap)
+    Gdip_DisposeBitmap(readMap)
+    Gdip_DisposeEffect(readEffect1)
+}
+
+getUnixTime(){
+    now := A_NowUTC
+    EnvSub, now,1970, seconds
+    return now
+}
 
 
 closeRoblox(){
@@ -1247,31 +1566,43 @@ mainLoop(){
         
         Sleep, 250
 
-        align()
+        if (options.InvScreenshotsEnabled && getUnixTime()-options.LastInvScreenshot >= 3600){
+            options.LastInvScreenshot := getUnixTime()
 
-        if (A_NowUTC-options.LastCraftTime >=  options.CraftingInterval*60){
-            options.LastCraftTime := A_NowUTC
+            screenshotInventories()
+        }
 
+        Sleep, 250
+
+        if (getUnixTime()-options.LastCraftSession >=  options.CraftingInterval*60){
+            options.LastCraftSession := getUnixTime()
+            
             handleCrafting()
         }
         
         if (options.DoingObby && (A_TickCount - lastObby) >= (obbyCooldown*1000)){
+            align()
             obbyRun()
             hasBuff := checkHasObbyBuff(BRCornerX,BRCornerY,statusEffectHeight)
             Sleep, 1000
             hasBuff := hasBuff || checkHasObbyBuff(BRCornerX,BRCornerY,statusEffectHeight)
-            align()
-            hasBuff := hasBuff || checkHasObbyBuff(BRCornerX,BRCornerY,statusEffectHeight)
+            if (!hasBuff){
+                Sleep, 5000
+                hasBuff := hasBuff || checkHasObbyBuff(BRCornerX,BRCornerY,statusEffectHeight)
+            }
             if (!hasBuff)
             {
+                align()
                 updateStatus("Obby Failed, Retrying")
                 lastObby := A_TickCount - obbyCooldown*1000
                 obbyRun()
                 hasBuff := checkHasObbyBuff(BRCornerX,BRCornerY,statusEffectHeight)
                 Sleep, 1000
                 hasBuff := hasBuff || checkHasObbyBuff(BRCornerX,BRCornerY,statusEffectHeight)
-                align()
-                hasBuff := hasBuff || checkHasObbyBuff(BRCornerX,BRCornerY,statusEffectHeight)
+                if (!hasBuff){
+                    Sleep, 5000
+                    hasBuff := hasBuff || checkHasObbyBuff(BRCornerX,BRCornerY,statusEffectHeight)
+                }
                 if (!hasBuff){
                     lastObby := A_TickCount - obbyCooldown*1000
                 }
@@ -1279,6 +1610,7 @@ mainLoop(){
         }
 
         if (options.CollectItems){
+            align(1)
             searchForItems()
         }
     }
@@ -1392,6 +1724,7 @@ Gui Add, Button, gWebhookHelpClick vWebhookHelpButton x325 y50 w23 h23, ?
 Gui Add, CheckBox, vWebhookImportantOnlyCheckBox x166 y126 w140 h16 +0x2, % " Important events only"
 Gui Add, Text, vWebhookUserIDHeader x161 y145 w150 h14 BackgroundTrans, % "Discord User ID (Pings):"
 Gui Add, Edit, x166 y162 w169 h16 vWebhookUserIDInput,% ""
+Gui Add, CheckBox, vWebhookInventoryScreenshots x161 y183 w170 h16 +0x2, % "Hourly Inventory Screenshots"
 
 Gui Font, s10 w600
 Gui Add, GroupBox, x356 y40 w128 h50 vStatusOtherGroup -Theme +0x50000007, Other
@@ -1427,7 +1760,7 @@ Gui Add, Edit, x31 y167 w437 h20 vPrivateServerInput,% ""
 ; credits tab
 Gui Tab, 5
 Gui Font, s10 w600
-Gui Add, GroupBox, x16 y40 w231 h170 vCreditsGroup -Theme +0x50000007, The Creator
+Gui Add, GroupBox, x16 y40 w231 h133 vCreditsGroup -Theme +0x50000007, The Creator
 Gui Add, Picture, w75 h75 x23 y62, % mainDir "images\pfp.png"
 Gui Font, s12 w600
 Gui Add, Text, x110 y57 w130 h22,BuilderDolphin
@@ -1436,7 +1769,8 @@ Gui Add, Text, x120 y78 w80 h18,(dolphin)
 Gui Font, s8 norm
 Gui Add, Text, x115 y95 w124 h40,"This was supposed to be a short project to learn AHK..."
 Gui Font, s8 norm
-Gui Add, Text, x28 y145 w200 h32,% "More to come soon perhaps..."
+Gui Add, Text, x28 y145 w200 h32 BackgroundTrans,% "More to come soon perhaps..."
+Gui Add, Button, x28 y177 w206 h32 gMoreCreditsClick,% "More Credits"
 
 Gui Font, s10 w600
 Gui Add, GroupBox, x252 y40 w231 h90 vCreditsGroup2 -Theme +0x50000007, The Inspiration
@@ -1477,6 +1811,7 @@ global directValues := {"ObbyCheckBox":"DoingObby"
     ,"WebhookImportantOnlyCheckBox":"WebhookImportantOnly"
     ,"WebhookRollImageCheckBox":"WebhookAuraRollImages"
     ,"WebhookUserIDInput":"DiscordUserID"
+    ,"WebhookInventoryScreenshots":"InvScreenshotsEnabled"
     ,"StatusBarCheckBox":"StatusBarEnabled"}
 
 global directNumValues := {"WebhookRollSendInput":"WebhookRollSendMinimum"
@@ -1510,7 +1845,7 @@ updateUIOptions(){
 updateUIOptions()
 
 validateWebhookLink(link){
-    return RegExMatch(link,"\Qhttps://discord.com/api/webhooks/\E(\d+)/.*") && !RegExMatch(link,"=")
+    return RegexMatch(link, "i)https:\/\/(canary\.|ptb\.)?(discord|discordapp)\.com\/api\/webhooks\/([\d]+)\/([a-z0-9_-]+)") ; filter by natro
 }
 
 applyNewUIOptions(){
@@ -1694,7 +2029,7 @@ updateStatus(newStatus){
     if (options.WebhookEnabled){
         FormatTime, fTime, , HH:mm:ss
         if (!options.WebhookImportantOnly || importantStatuses[newStatus]){
-            try webhookPost("[" fTime "]: " newStatus,,statusColors[newStatus] ? statusColors[newStatus] : 1)
+            try webhookPost({embedContent: "[" fTime "]: " newStatus,embedColor: (statusColors[newStatus] ? statusColors[newStatus] : 1)})
         }
     }
     GuiControl,statusBar:,StatusBarText,% "Status: " newStatus
@@ -1793,7 +2128,7 @@ startMacro(){
     Gui, mainUI:+LastFoundExist
     WinSetTitle, % "dolphSol Macro " version " (Running)"
 
-    Run, % mainDir . "lib\rollDetection.ahk"
+    Run, % mainDir . "lib\status.ahk"
 
     if (options.StatusBarEnabled){
         Gui statusBar:Show, % "w220 h25 x" (A_ScreenWidth-300) " y50", dolphSol Status
@@ -1809,7 +2144,8 @@ startMacro(){
     while running {
         try mainLoop()
         catch e
-            try webhookPost(e,"Error Received",15548997)
+            try webhookPost({embedContent: "what: " e.what ", file: " e.file
+        . ", line: " e.line ", message: " e.message ", extra: " e.extra,embedTitle: "Error Received",color: 15548997})
         
         Sleep, 2000
     }
@@ -1818,7 +2154,7 @@ startMacro(){
 if (!options.FirstTime){
     options.FirstTime := 1
     saveOptions()
-    MsgBox, 0,dolphSol Macro - Welcome, % "Welcome to dolphSol macro!`n`nIf this is your first time here, make sure to go through all of the tabs to make sure your settings are right.`n`nMake sure join the Discord server and check the GitHub page for the community and future updates, which can both be found in the Credits page. (Discord link is also in the bottom right corner)"
+    MsgBox, 0,dolphSol Macro - Welcome, % "Welcome to dolphSol macro!`n`nIf this is your first time here, make sure to go through all of the tabs to make sure your settings are right.`n`nIf you are here from an update, remember that you can import all of your previous settings in the Settings menu.`n`nMake sure join the Discord server and check the GitHub page for the community and future updates, which can both be found in the Credits page. (Discord link is also in the bottom right corner)"
 }
 
 if (!options.WasRunning){
@@ -1871,6 +2207,20 @@ WebhookRollImageCheckBoxClick:
     }
     return
 
+MoreCreditsClick:
+    creditText =
+(
+Development
+
+- Assistant Developer - Stanley (stanleyrekt)
+- Path Inspiration - Aod_Shanaenae
+
+
+Thank you to everyone who currently supports and uses the macro! You guys are amazing!
+)
+    MsgBox, 0, More Credits, % creditText
+    return
+
 ; help buttons
 
 ObbyHelpClick:
@@ -1886,7 +2236,7 @@ CollectHelpClick:
     return
 
 WebhookHelpClick:
-    MsgBox, 0, Discord Webhook, % "Section for connecting a Discord Webhook to have status messages displayed in a target Discord Channel. Enable this option by entering a valid Discord Webhook link.`n`nTo create a webhook, you must have Administrator permissions in a server (preferably your own, separate server). Go to your target channel, then configure it. Go to Integrations, and create a Webhook in the Webhooks Section. After naming it whatever you like, copy the Webhook URL, then paste it into the macro. Now you can enable the Discord Webhook option!`n`nRequires a valid Webhook URL to enable.`n`nImportant events only - The webhook will only send important events such as disconnects, rolls, and initialization, instead of all of the obby/collecting/crafting ones.`n`nYou can provide your Discord ID here as well to be pinged for rolling a rarity group or higher when detected by the system. You can select the minimum notification rarity below."
+    MsgBox, 0, Discord Webhook, % "Section for connecting a Discord Webhook to have status messages displayed in a target Discord Channel. Enable this option by entering a valid Discord Webhook link.`n`nTo create a webhook, you must have Administrator permissions in a server (preferably your own, separate server). Go to your target channel, then configure it. Go to Integrations, and create a Webhook in the Webhooks Section. After naming it whatever you like, copy the Webhook URL, then paste it into the macro. Now you can enable the Discord Webhook option!`n`nRequires a valid Webhook URL to enable.`n`nImportant events only - The webhook will only send important events such as disconnects, rolls, and initialization, instead of all of the obby/collecting/crafting ones.`n`nYou can provide your Discord ID here as well to be pinged for rolling a rarity group or higher when detected by the system. You can select the minimum notification/send rarity in the Roll Detection system.`n`nHourly Inventory Screenshots - Screenshots of both your Aura Storage and Item Inventory are sent to your webhook."
     return
 
 RollDetectionHelpClick:
