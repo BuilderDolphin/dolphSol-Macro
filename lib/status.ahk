@@ -410,7 +410,7 @@ rollDetection(bypass := 0){
         auraInfo := getAuraInfo(bypass,1)
         if (auraInfo && sendMinimum && sendMinimum <= auraInfo.rarity){
             webhookPost({embedContent: "# You rolled " auraInfo.name "!\n> ### 1/" commaFormat(auraInfo.rarity) " Chance",embedTitle: "Roll",embedColor: auraInfo.color,embedImage: auraImages ? auraInfo.image : 0,embedFooter: "Detected color " bypass,pings: (pingMinimum && pingMinimum <= auraInfo.rarity)})
-        } else {
+        } else if (!auraInfo) {
             webhookPost({embedContent: "Unknown roll color: " bypass,embedTitle: "Roll?",embedColor: bypass})
         }
         Sleep, 6000
@@ -423,7 +423,7 @@ rollDetection(bypass := 0){
         }
         if (auraInfo && sendMinimum && sendMinimum <= auraInfo.rarity){
             webhookPost({embedContent: "# You rolled " auraInfo.name "!\n> ### 1/" commaFormat(auraInfo.rarity) " Chance",embedTitle: "Roll",embedColor: auraInfo.color,embedImage: auraImages ? auraInfo.image : 0,embedFooter: "Detected color " bypass,pings: (pingMinimum && pingMinimum <= auraInfo.rarity)})
-        } else {
+        } else if (!auraInfo) {
             webhookPost({embedContent: "Unknown roll color: " bypass,embedTitle: "Roll?",embedColor: bypass})
         }
         rareDisplaying := 0

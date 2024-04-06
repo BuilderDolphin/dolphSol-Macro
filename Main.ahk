@@ -29,13 +29,15 @@ if (RegExMatch(A_ScriptDir,"\.zip")){
 
 Gdip_Startup()
 
-global version := "v1.2.0"
+global version := "v1.3.0"
 
 global canStart := 0
 global macroStarted := 0
 global reconnecting := 0
 
 global isSpawnCentered := 0
+
+global pathsRunning := []
 
 obbyCooldown := 120 ; 120 seconds
 lastObby := A_TickCount - obbyCooldown*1000
@@ -49,6 +51,7 @@ global mainDir := A_ScriptDir "\"
 
 configPath := mainDir . "settings\config.ini"
 global ssPath := mainDir . "images\ss.png"
+global pathDir := mainDir . "paths\"
 
 configHeader := "; dolphSol Settings`n;   Do not put spaces between equals`n;   Additions may break this file and the macro overall, please be cautious`n;   If you mess up this file, clear it entirely and restart the macro`n`n[Options]`r`n"
 
@@ -104,6 +107,7 @@ global options := {"DoingObby":1
     ,"WindowX":100
     ,"WindowY":100
     ,"VIP":0
+    ,"InitialAlign":1
     ,"ReconnectEnabled":1
     ,"AutoEquipEnabled":0
     ,"AutoEquipX":-0.415
@@ -376,13 +380,24 @@ webhookPost(data := 0){
     WebRequest.WaitForResponse()
 }
 
+HasVal(haystack, needle) {
+    for index, value in haystack
+        if (value = needle)
+            return index
+    if !(IsObject(haystack))
+        throw Exception("Bad haystack!", -1, haystack)
+    return 0
+}
+
 global possibleDowns := ["w","a","s","d","Space","Enter","Esc","r"]
 
-stop(terminate := 0) {
+liftKeys(){
     for i,v in possibleDowns {
         Send {%v% Up}
     }
+}
 
+stop(terminate := 0) {
     if (running){
         updateStatus("Macro Stopped")
     }
@@ -393,6 +408,12 @@ stop(terminate := 0) {
 
     DetectHiddenWindows, On
     WinClose, % mainDir . "lib\status.ahk"
+
+    for i,v in pathsRunning {
+        WinClose, % v
+    }
+
+    liftKeys()
 
     applyNewUIOptions()
     saveOptions()
@@ -433,8 +454,12 @@ handlePause(){
 
 global regWalkFactor := 1.25 ; since i made the paths all with vip, normalize
 
+getWalkTime(d){
+    return d*(1 + (regWalkFactor-1)*(1-options.VIP))
+}
+
 walkSleep(d){
-    Sleep, % d*(1 + (regWalkFactor-1)*(1-options.VIP))
+    Sleep, % getWalkTime(d)
 }
 
 press(k, duration := 50) {
@@ -471,6 +496,9 @@ initialize()
 {
     initialized := 1
     resetZoom()
+    if (options.InitialAlign){
+        runPath("initialAlignment",[],1)
+    }
 }
 
 resetZoom(){
@@ -509,16 +537,19 @@ alignCamera(){
     clickMenuButton(2)
     Sleep, 500
     getRobloxPos(rX,rY,rW,rH)
-    MouseMove, % rX + rW*0.15, % rY + rH*0.1
+    MouseMove, % rX + rW*0.15, % rY + 44 + rH*0.05
     Sleep, 200
     MouseClick
     Sleep, 500
 }
 
 align(forCollection := 0){ ; align v2
+    if (isSpawnCentered && forCollection){
+        isSpawnCentered := 0
+        return
+    }
     updateStatus("Aligning Character")
-    reset()
-    Sleep, 4000
+    ; reset() darn update
 
     alignCamera()
 
@@ -547,13 +578,87 @@ collect(num){
     if (!options["ItemSpot" . num]){
         return
     }
-    Loop, 4 
+    Loop, 6 
     {
         Send {f}
         Sleep, 75
     }
     Send {e}
     Sleep, 50
+}
+
+runPath(pathName,voidPoints,noCenter = 0){
+    try {
+        targetDir := pathDir . pathName . ".ahk"
+        if (!FileExist(targetDir)){
+            MsgBox, 0, % "Error",% "Path file: " . targetDir . " does not exist."
+            return
+        }
+        if (HasVal(pathsRunning,targetDir)){
+            return
+        }
+        pathsRunning.Push(targetDir)
+        
+        DetectHiddenWindows, On
+        Run, % targetDir
+
+        stopped := 0
+
+        Loop 5 {
+            if (WinExist(targetDir)){
+                break
+            }
+            Sleep, 200
+        }
+
+        getRobloxPos(rX,rY,width,height)
+        scanPoints := [[rX+1,rY+1],[rX+width-2,rY+1],[rX+1,rY+height-2],[rX+width-2,rY+height-2]]
+
+        voidPoints := voidPoints ? voidPoints : []
+        startTick := A_TickCount
+        expectedVoids := 0
+        voidCooldown := 0
+
+        while (WinExist(targetDir)){
+            for i,v in voidPoints {
+                if (v){
+                    if (A_TickCount-startTick >= getWalkTime(v)){
+                        expectedVoids += 1
+                        voidPoints[i] := 0
+                    }
+                }
+            }
+
+            blackCorners := 0
+            for i,point in scanPoints {
+                PixelGetColor, pColor, % point[1], % point[2], RGB
+                blackCorners += compareColors(pColor,0x000000) < 8
+            }
+            if (blackCorners == 3){
+                if (!voidCooldown){
+                    voidCooldown := 5
+                    expectedVoids -= 1
+                    if (expectedVoids < 0){
+                        stopped := 1
+                        break
+                    }
+                }
+            }
+            Sleep, 225
+            voidCooldown := Max(0,voidCooldown-1)
+        }
+
+        if (stopped){
+            WinClose, % targetDir
+            isSpawnCentered := 0
+        } else if (!noCenter) {
+            isSpawnCentered := 1
+        }
+        liftKeys()
+        pathsRunning.Remove(HasVal(pathsRunning,targetDir))
+    } catch e {
+        MsgBox, 0,Path Error,% "An error occurred when running path: " . pathDir . "`n:" . e
+    }
 }
 
 searchForItemsOld(){
@@ -666,250 +771,16 @@ searchForItemsOld(){
 
 searchForItems(){
     updateStatus("Searching for Items")
-    Send {d Down}
-    walkSleep(2500)
-    Send {s Down}
-    walkSleep(1000)
-    Send {s Up}
-    walkSleep(150)
-    Send {d Up}
-    collect(1)
-
-    Send {a Down}
-    Send {w Down}
-    walkSleep(300)
-    Send {a Up}
-    walkSleep(3500)
-    Send {d Down}
-    walkSleep(300)
-    Send {d Up}
-    Send {w Up}
-    collect(2)
-
-    ; void hop
-    Send {d Down}
-    walkSleep(400)
-    Send {d Up}
-    Sleep, 1750
-    Send {w Down}
-    walkSleep(300)
-    jump()
-    walkSleep(350)
-    Send {a Down}
-    walkSleep(250)
-    jump()
-    walkSleep(350)
-    Send {w Up}
-    walkSleep(250)
-    jump()
-    walkSleep(350)
-    Send {a Up}
-    Send {w Down}
-    walkSleep(100)
-    jump()
-    walkSleep(350)
-    Send {d Down}
-    walkSleep(750)
-    Send {w Up}
-    Send {d Up}
-    collect(3)
-
-    Send, {a Down}
-    walkSleep(900)
-    Send {a Up}
-    Send {w Down}
-    walkSleep(100)
-    jump()
-    walkSleep(800)
-    Send {w Up}
-    Send {d Down}
-    walkSleep(500)
-    Send {w Down}
-    walkSleep(250)
-    Send, {w Up}
-    Send, {d Up}
-    Send {Right Down}
-    Sleep, 650
-    Send {Right Up}
-    collect(4)
-
-    alignCamera()
-    press("a",850)
-    Send {s Down}
-    walkSleep(4000)
-    Send {a Down}
-    walkSleep(1550)
-    Send {a Up}
-    walkSleep(600)
-    Send {s Up}
-    collect(5)
-
-    Send {a Down}
-    jump()
-    walkSleep(300)
-    Send {a Up}
-    press("s",4000)
-    press("d",250)
-    Send {Left Down}
-    Sleep, 1000
-    Send {Left Up}
-    collect(6)
-
-    alignCamera()
-    Send {s Down}
-    walkSleep(2500)
-    press("d",500)
-    Send {s Up}
-    press("w",200)
-    Send {d Down}
-    walkSleep(100)
-    jump()
-    walkSleep(1000)
-    Send {s Down}
-    walkSleep(400)
-    Send {s Up}
-    jump()
-    walkSleep(1000)
-    Send {s Down}
-    Send {d Up}
-    walkSleep(300)
-    Send {Space Down}
-    walkSleep(1100)
-    Send {Space Up}
-    Send {s Up}
-    Sleep, 500 ; normal bc waiting for jump to land
-    press("d",400)
-    press("w",850)
-    press("d",150)
-    collect(7)
+    runPath("searchForItems",[8250])
 
     options.CollectionLoops += 1
 }
 
 doObby(){
     updateStatus("Doing Obby")
-    if (options.VIP)
-    {    
-        Send {w Down}
-        walkSleep(100)
-        jump()
-        walkSleep(550)
-        Send {a Down}
-        walkSleep(150)
-        jump()
-        walkSleep(650)
-        jump()
-        walkSleep(400)
-        Send {a Up}
-        walkSleep(200)
-        jump()
-        Send {a Down}
-        walkSleep(200)
-        Send {a Up}
-        walkSleep(400)
-        Send {w Up}
-        Send {a Down}
-        Send {w Down}
-        jump()
-        walkSleep(300)
-        Send {w Up}
-        walkSleep(350)
-        jump()
-        walkSleep(700)
-        jump()
-        walkSleep(1400)
-        Send {s Down} ;real obby
-        jump()
-        walkSleep(700)
-        jump()
-        walkSleep(300)
-        Send {s Up}
-        walkSleep(350)
-        jump()
-        Send {s Down}
-        walkSleep(200)
-        Send {s Up}
-        walkSleep(450)
-        Send {w Down}
-        jump()
-        walkSleep(700)
-        jump()
-        walkSleep(650)
-        Send {a Up}
-        walkSleep(50)
-        jump()
-        walkSleep(700)
-        jump()
-        walkSleep(700)
-        jump()
-        walkSleep(600)
-        Send {d Down} ; finish
-        walkSleep(600)
-        Send {d Up}
-        Send {w Up}
-    } else {
-        Send {w Down}
-        walkSleep(100)
-        jump()
-        walkSleep(550)
-        Send {a Down}
-        walkSleep(150)
-        jump()
-        walkSleep(650)
-        jump()
-        walkSleep(500)
-        Send {a Up}
-        walkSleep(100)
-        jump()
-        Send {a Down}
-        walkSleep(200)
-        Send {a Up}
-        walkSleep(400)
-        Send {a Down}
-        Send {w Down}
-        walkSleep(50)
-        jump()
-        walkSleep(300)
-        Send {w Up}
-        walkSleep(350)
-        jump()
-        walkSleep(700)
-        jump()
-        walkSleep(1300)
-        Send {s Down} ;real obby
-        jump()
-        walkSleep(500)
-        Send {s Up}
-        walkSleep(200)
-        Send {s Down}
-        jump()
-        walkSleep(300)
-        Send {s Up}
-        walkSleep(450)
-        jump()
-        Send {s Down}
-        walkSleep(200)
-        Send {s Up}
-        walkSleep(450)
-        Send {w Down}
-        jump()
-        walkSleep(700)
-        jump()
-        walkSleep(550)
-        Send {a Up}
-        walkSleep(100)
-        jump()
-        walkSleep(700)
-        jump()
-        walkSleep(700)
-        jump()
-        walkSleep(600)
-        Send {d Down} ; finish
-        walkSleep(450)
-        Send {w Up}
-        walkSleep(200)
-        Send {d Up}
-    }
+    
+    runPath("doObby",[],1)
+
     options.ObbyAttempts += 1
 }
 
@@ -971,7 +842,7 @@ closeChat(){
 }
 
 checkInvOpen(){
-    checkPos := getPositionFromAspectRatioUV(-1.209440, -0.695182,storageAspectRatio)
+    checkPos := getPositionFromAspectRatioUV(0.861357, 0.494592,storageAspectRatio)
     PixelGetColor, checkC, % checkPos[1], % checkPos[2], RGB
     alreadyOpen := compareColors(checkC,0xffffff) < 8
     return alreadyOpen
@@ -1119,6 +990,7 @@ clamp(x,mn,mx){
 global menuBarOffset := 10 ;10 pixels from left edge
 
 getMenuButtonPosition(num, ByRef posX := "", ByRef posY := ""){ ; num is 1-7, 1 being top, 7 only existing if you are the private server owner
+    num -= 1 ;easter button
     getRobloxPos(rX, rY, width, height)
 
     menuBarVSpacing := 10.5*(height/1080)
@@ -1127,7 +999,7 @@ getMenuButtonPosition(num, ByRef posX := "", ByRef posY := ""){ ; num is 1-7, 1 
     startPos := [menuEdgeCenter[1]+(menuBarButtonSize/2),menuEdgeCenter[2]+(menuBarButtonSize/4)-(menuBarButtonSize+menuBarVSpacing-1)*3]
     
     posX := startPos[1]
-    posY := startPos[2] + (menuBarButtonSize+menuBarVSpacing)*(num-1)
+    posY := startPos[2] + (menuBarButtonSize+menuBarVSpacing)*(num-1) + (menuBarButtonSize/2) ; since easter
 
     MouseMove, % posX, % posY
 }
@@ -1141,7 +1013,7 @@ clickMenuButton(num){
 
 ; storage ratio: w1649 : h952
 global storageAspectRatio := 952/1649
-global storageEquipUV := [-0.875,0.054] ; equip button
+global storageEquipUV := [-0.625,0.0423] ; equip button
 
 getAspectRatioSize(ratio, width, height){
     fH := width*ratio
@@ -1181,6 +1053,13 @@ getAspectRatioUVFromPosition(x,y,aspectRatio){
 
     return p
 }
+
+/*
+Sleep, 10000
+MouseGetPos, mx,my
+p := getAspectRatioUVFromPosition(mx,my,storageAspectRatio)
+OutputDebug, % p[1] " " p[2]
+*/
 
 clickCraftingSlot(num,isPotionSlot := 0){
     getRobloxPos(rX,rY,width,height)
@@ -1574,11 +1453,13 @@ mainLoop(){
 
         Sleep, 250
 
+        /*
         if (getUnixTime()-options.LastCraftSession >=  options.CraftingInterval*60){
             options.LastCraftSession := getUnixTime()
             
             handleCrafting()
-        }
+        } deprecated
+        */
         
         if (options.DoingObby && (A_TickCount - lastObby) >= (obbyCooldown*1000)){
             align()
@@ -1636,7 +1517,7 @@ Gui Add, Button, gStopClick vStopButton x184 y224 w80 h23, F3 - Stop
 Gui Font, s11 Norm, Segoe UI
 Gui Add, Picture, gDiscordServerClick w26 h20 x462 y226, % mainDir "images\discordIcon.png"
 
-Gui Add, Tab3, vMainTabs x8 y8 w484 h210 +0x800000, Main|Crafting|Status|Settings|Credits
+Gui Add, Tab3, vMainTabs x8 y8 w484 h210 +0x800000, Main|Status|Settings|Credits
 ; main tab
 Gui Tab, 1
 
@@ -1669,6 +1550,7 @@ Gui Add, CheckBox, vCollectSpot5CheckBox x202 y174 w30 h26 +0x2, % " 5"
 Gui Add, CheckBox, vCollectSpot6CheckBox x242 y174 w30 h26 +0x2, % " 6"
 Gui Add, CheckBox, vCollectSpot7CheckBox x282 y174 w30 h26 +0x2, % " 7"
 
+/*
 ; crafting tab
 Gui Tab, 2
 Gui Font, s10 w600
@@ -1703,11 +1585,12 @@ Gui Add, Text, x32 y170 w170 h35 vCraftingIntervalText BackgroundTrans, Craft ev
 Gui Font, s9 norm
 Gui Add, Edit, x100 y171 w45 h18 vCraftingIntervalInput, 10
 Gui Add, UpDown, vCraftingIntervalUpDown Range1-300, 10
+*/
 
 
 
 ; status tab
-Gui Tab, 3
+Gui Tab, 2
 Gui Font, s10 w600
 Gui Add, GroupBox, x16 y40 w130 h170 vStatsGroup -Theme +0x50000007, Stats
 Gui Font, s9 norm
@@ -1742,11 +1625,12 @@ Gui Add, Edit, vWebhookRollPingInput x370 y162 w102 h18, 100000
 Gui Add, CheckBox, vWebhookRollImageCheckBox gWebhookRollImageCheckBoxClick x365 y183 w100 h18, Aura Images
 
 ; settings tab
-Gui Tab, 4
+Gui Tab, 3
 Gui Font, s10 w600
 Gui Add, GroupBox, x16 y40 w467 h65 vGeneralSettingsGroup -Theme +0x50000007, General
 Gui Font, s9 norm
-Gui Add, CheckBox, vVIPCheckBox x32 y58 w300 h22 +0x2, % " VIP Gamepass Owned (Movement Speed increase)"
+Gui Add, CheckBox, vVIPCheckBox x32 y58 w150 h22 +0x2, % " VIP Gamepass Owned"
+Gui Add, CheckBox, vInitialAlignCheckBox gInitialAlignClick x202 y58 w200 h22 +0x2, % " Macro Start Void Hop"
 Gui Add, Button, vImportSettingsButton gImportSettingsClick x30 y80 w130 h20, Import Settings
 
 Gui Font, s10 w600
@@ -1758,7 +1642,7 @@ Gui Add, Edit, x31 y167 w437 h20 vPrivateServerInput,% ""
 
 
 ; credits tab
-Gui Tab, 5
+Gui Tab, 4
 Gui Font, s10 w600
 Gui Add, GroupBox, x16 y40 w231 h133 vCreditsGroup -Theme +0x50000007, The Creator
 Gui Add, Picture, w75 h75 x23 y62, % mainDir "images\pfp.png"
@@ -1799,6 +1683,7 @@ global directValues := {"ObbyCheckBox":"DoingObby"
     ,"ObbyBuffCheckBox":"CheckObbyBuff"
     ,"CollectCheckBox":"CollectItems"
     ,"VIPCheckBox":"VIP"
+    ,"InitialAlignCheckBox":"InitialAlign"
     ,"AutoEquipCheckBox":"AutoEquipEnabled"
     ,"CraftingIntervalUpDown":"CraftingInterval"
     ,"ItemCraftingCheckBox":"ItemCraftingEnabled"
@@ -2207,6 +2092,14 @@ WebhookRollImageCheckBoxClick:
     }
     return
 
+InitialAlignClick:
+    Gui mainUI:Default
+    GuiControlGet, v,, InitialAlignCheckBox
+    if (!v){
+        MsgBox, 0, Start Void Hop Disabled Notice, % "Notice: Since you have disabled the starting void hop, please ensure that you start the macro when the character is standing on the Spawn Point of the world, to prevent initial alignment issues."
+    }
+    return
+
 MoreCreditsClick:
     creditText =
 (
@@ -2215,6 +2108,14 @@ Development
 - Assistant Developer - Stanley (stanleyrekt)
 - Path Inspiration - Aod_Shanaenae
 
+Supporters (Donations)
+
+- @happythunder
+- @Bigman
+- @sir.moxxi (sanji)
+- @zrx
+- @dj_frost
+- @FlamePrince101 - Member
 
 Thank you to everyone who currently supports and uses the macro! You guys are amazing!
 )
