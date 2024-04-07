@@ -128,4 +128,4 @@ press("d",400)
 press("w",850)
 collect(7)
 
-press("w",2750)
+press("w",5000)

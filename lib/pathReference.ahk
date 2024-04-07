@@ -84,8 +84,22 @@ isFullscreen() {
 	return (w = A_ScreenWidth && h = A_ScreenHeight)
 }
 
+GetRobloxHWND()
+{
+	if (hwnd := WinExist("Roblox ahk_exe RobloxPlayerBeta.exe"))
+		return hwnd
+	else if (WinExist("Roblox ahk_exe ApplicationFrameHost.exe"))
+	{
+		ControlGet, hwnd, Hwnd, , ApplicationFrameInputSinkWindow1
+		return hwnd
+	}
+	else
+		return 0
+}
+
 getRobloxPos(ByRef x := "", ByRef y := "", ByRef width := "", ByRef height := ""){
-    WinGetPos, x, y, width, height, Roblox
+    rHwnd := GetRobloxHWND()
+    WinGetPos, x, y, width, height, ahk_id %rHwnd%
 
     if (!isFullscreen()){
         height -= 39
@@ -151,7 +165,7 @@ alignCamera(){
     clickMenuButton(2)
     Sleep, 500
     getRobloxPos(rX,rY,rW,rH)
-    MouseMove, % rX + rW*0.15, % rY + rH*0.1
+    MouseMove, % rX + rW*0.15, % rY + 44 + rH*0.05 + options.BackOffset
     Sleep, 200
     MouseClick
     Sleep, 500

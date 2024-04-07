@@ -29,13 +29,16 @@ if (RegExMatch(A_ScriptDir,"\.zip")){
 
 Gdip_Startup()
 
-global version := "v1.3.0"
+global version := "v1.3.1"
+
+global robloxId := 0
 
 global canStart := 0
 global macroStarted := 0
 global reconnecting := 0
 
 global isSpawnCentered := 0
+global atSpawn := 0
 
 global pathsRunning := []
 
@@ -107,7 +110,7 @@ global options := {"DoingObby":1
     ,"WindowX":100
     ,"WindowY":100
     ,"VIP":0
-    ,"InitialAlign":1
+    ,"BackOffset":0
     ,"ReconnectEnabled":1
     ,"AutoEquipEnabled":0
     ,"AutoEquipX":-0.415
@@ -433,7 +436,7 @@ handlePause(){
         saveOptions()
         updateUIOptions()
 
-        WinActivate, Roblox
+        WinActivate, ahk_id %robloxId%
         for i,v in pauseDowns {
             Send {%v% Down}
         }
@@ -497,7 +500,7 @@ initialize()
     initialized := 1
     resetZoom()
     if (options.InitialAlign){
-        runPath("initialAlignment",[],1)
+        ; runPath("initialAlignment",[],1) no more no reset!
     }
 }
 
@@ -537,7 +540,7 @@ alignCamera(){
     clickMenuButton(2)
     Sleep, 500
     getRobloxPos(rX,rY,rW,rH)
-    MouseMove, % rX + rW*0.15, % rY + 44 + rH*0.05
+    MouseMove, % rX + rW*0.15, % rY + 44 + rH*0.05 + options.BackOffset
     Sleep, 200
     MouseClick
     Sleep, 500
@@ -546,10 +549,16 @@ alignCamera(){
 align(forCollection := 0){ ; align v2
     if (isSpawnCentered && forCollection){
         isSpawnCentered := 0
+        atSpawn := 0
         return
     }
     updateStatus("Aligning Character")
-    ; reset() darn update
+    if (atSpawn){
+        atSpawn := 0
+    } else {
+        reset()
+        Sleep, 4000
+    }
 
     alignCamera()
 
@@ -651,6 +660,7 @@ runPath(pathName,voidPoints,noCenter = 0){
         if (stopped){
             WinClose, % targetDir
             isSpawnCentered := 0
+            atSpawn := 1
         } else if (!noCenter) {
             isSpawnCentered := 1
         }
@@ -888,8 +898,23 @@ isFullscreen() {
 	return (w = A_ScreenWidth && h = A_ScreenHeight)
 }
 
+; used from natro
+GetRobloxHWND()
+{
+	if (hwnd := WinExist("Roblox ahk_exe RobloxPlayerBeta.exe"))
+		return hwnd
+	else if (WinExist("Roblox ahk_exe ApplicationFrameHost.exe"))
+	{
+		ControlGet, hwnd, Hwnd, , ApplicationFrameInputSinkWindow1
+		return hwnd
+	}
+	else
+		return 0
+}
+
 getRobloxPos(ByRef x := "", ByRef y := "", ByRef width := "", ByRef height := ""){
-    WinGetPos, x, y, width, height, Roblox
+    rHwnd := GetRobloxHWND()
+    WinGetPos, x, y, width, height, ahk_id %rHwnd%
 
     if (!isFullscreen()){
         height -= 39
@@ -1279,20 +1304,6 @@ closeRoblox(){
     WinClose, % "Roblox Crash"
 }
 
-; used from natro
-GetRobloxHWND()
-{
-	if (hwnd := WinExist("Roblox ahk_exe RobloxPlayerBeta.exe"))
-		return hwnd
-	else if (WinExist("Roblox ahk_exe ApplicationFrameHost.exe"))
-	{
-		ControlGet, hwnd, Hwnd, , ApplicationFrameInputSinkWindow1
-		return hwnd
-	}
-	else
-		return 0
-}
-
 attemptReconnect(failed := 0){
     initialized := 0
     if (reconnecting && !failed){
@@ -1315,8 +1326,9 @@ attemptReconnect(failed := 0){
             try Run % """roblox://placeID=15532962292"""
         }
         Loop 240 {
-            if (GetRobloxHWND()){
-                WinActivate, Roblox
+            rHwnd := GetRobloxHWND()
+            if (rHwnd){
+                WinActivate, ahk_id %rHwnd%
                 break
             }
             if (A_Index == 240){
@@ -1403,14 +1415,12 @@ MsgBox, % ocrFromBitmap(pbm2)
 ExitApp
 */
 
-robloxId := 0
-
 mainLoop(){
     Global
     if (reconnecting){
         return
     }
-    currentId := WinExist("Roblox")
+    currentId := GetRobloxHWND()
     if (!currentId){
         attemptReconnect()
         return
@@ -1630,7 +1640,9 @@ Gui Font, s10 w600
 Gui Add, GroupBox, x16 y40 w467 h65 vGeneralSettingsGroup -Theme +0x50000007, General
 Gui Font, s9 norm
 Gui Add, CheckBox, vVIPCheckBox x32 y58 w150 h22 +0x2, % " VIP Gamepass Owned"
-Gui Add, CheckBox, vInitialAlignCheckBox gInitialAlignClick x202 y58 w200 h22 +0x2, % " Macro Start Void Hop"
+Gui Add, Text, x222 y60 w200 h22, % "Collection Back Button Y Offset:"
+Gui Add, Edit, x396 y60 w50 h18
+Gui Add, UpDown, vBackOffsetUpDown Range-500-500, 0
 Gui Add, Button, vImportSettingsButton gImportSettingsClick x30 y80 w130 h20, Import Settings
 
 Gui Font, s10 w600
@@ -1683,7 +1695,7 @@ global directValues := {"ObbyCheckBox":"DoingObby"
     ,"ObbyBuffCheckBox":"CheckObbyBuff"
     ,"CollectCheckBox":"CollectItems"
     ,"VIPCheckBox":"VIP"
-    ,"InitialAlignCheckBox":"InitialAlign"
+    ,"BackOffsetUpDown":"BackOffset"
     ,"AutoEquipCheckBox":"AutoEquipEnabled"
     ,"CraftingIntervalUpDown":"CraftingInterval"
     ,"ItemCraftingCheckBox":"ItemCraftingEnabled"
@@ -1997,7 +2009,6 @@ startMacro(){
     if (!canStart){
         return
     }
-    global robloxId
     if (macroStarted) {
         return
     }
@@ -2019,13 +2030,13 @@ startMacro(){
         Gui statusBar:Show, % "w220 h25 x" (A_ScreenWidth-300) " y50", dolphSol Status
     }
     
-    robloxId := WinExist("Roblox")
+    robloxId := GetRobloxHWND()
     if (!robloxId){
         attemptReconnect()
     }
 
     running := 1
-    WinActivate, Roblox
+    WinActivate, ahk_id %robloxId%
     while running {
         try mainLoop()
         catch e
@@ -2092,14 +2103,6 @@ WebhookRollImageCheckBoxClick:
     }
     return
 
-InitialAlignClick:
-    Gui mainUI:Default
-    GuiControlGet, v,, InitialAlignCheckBox
-    if (!v){
-        MsgBox, 0, Start Void Hop Disabled Notice, % "Notice: Since you have disabled the starting void hop, please ensure that you start the macro when the character is standing on the Spawn Point of the world, to prevent initial alignment issues."
-    }
-    return
-
 MoreCreditsClick:
     creditText =
 (
@@ -2116,6 +2119,10 @@ Supporters (Donations)
 - @zrx
 - @dj_frost
 - @FlamePrince101 - Member
+- @jw
+- @Maz - Member
+- @dead_is4
+- @CorruptExpy_II
 
 Thank you to everyone who currently supports and uses the macro! You guys are amazing!
 )
