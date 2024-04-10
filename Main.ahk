@@ -29,7 +29,7 @@ if (RegExMatch(A_ScriptDir,"\.zip")){
 
 Gdip_Startup()
 
-global version := "v1.3.1"
+global version := "v1.3.2"
 
 global robloxId := 0
 
@@ -69,8 +69,7 @@ global potionIndex := {0:"None"
     ,8:"Universe Potion I"}
 
 
-global craftingInfo := {"Gilded Coin":{slot:9,addSlots:1,maxes:[1],attempts:4,addedAttempts:1/5}
-    ,"Jackpot Gauntlet":{slot:7,addSlots:4,maxes:[7,77,77,777],attempts:1}
+global craftingInfo := {"Gilded Coin":{slot:13,addSlots:1,maxes:[1],attempts:4,addedAttempts:1/5}
     ,"Fortune Potion I":{slot:1,subSlot:1,addSlots:4,maxes:[5,1,5,1],attempts:2}
     ,"Fortune Potion II":{slot:1,subSlot:2,addSlots:5,maxes:[1,10,5,10,2],attempts:2}
     ,"Fortune Potion III":{slot:1,subSlot:3,addSlots:5,maxes:[1,15,10,15,5],attempts:2}
@@ -98,6 +97,8 @@ global reverseRarityIndex := reverseIndices(rarityIndex)
 
 ; defaults
 global options := {"DoingObby":1
+    ,"AzertyLayout":0
+    ,"ArcanePath":0
     ,"CheckObbyBuff":1
     ,"CollectItems":1
     ,"ItemSpot1":1
@@ -107,6 +108,7 @@ global options := {"DoingObby":1
     ,"ItemSpot5":1
     ,"ItemSpot6":1
     ,"ItemSpot7":1
+    ,"Screenshotinterval":60
     ,"WindowX":100
     ,"WindowY":100
     ,"VIP":0
@@ -129,7 +131,6 @@ global options := {"DoingObby":1
     ,"CraftingInterval":10
     ,"ItemCraftingEnabled":0
     ,"CraftingGildedCoin":1
-    ,"CraftingJackpotGauntlet":0
     ,"PotionCraftingEnabled":0
     ,"PotionCraftingSlot1":0
     ,"PotionCraftingSlot2":0
@@ -137,6 +138,9 @@ global options := {"DoingObby":1
     ,"LastCraftSession":0
     ,"InvScreenshotsEnabled":1
     ,"LastInvScreenshot":0
+
+    ,"ExtraRoblox":0 ; mainly for me (builderdolphin) to run my 3rd acc on 2nd monitor, not used for anything else, not intended for public use unless yk what you're doing i guess
+
     ; not really options but stats i guess
     ,"RunTime":0
     ,"Disconnects":0
@@ -490,14 +494,20 @@ jump() {
     press("Space")
 }
 
+arcaneTeleport(){
+    press("x",50)
+}
+
 ; main stuff
 
 global initialized := 0
 global running := 0
+global playButtonChecks := 2
 
 initialize()
 {
     initialized := 1
+    playButtonChecks := 2
     resetZoom()
     if (options.InitialAlign){
         ; runPath("initialAlignment",[],1) no more no reset!
@@ -781,7 +791,10 @@ searchForItemsOld(){
 
 searchForItems(){
     updateStatus("Searching for Items")
-    runPath("searchForItems",[8250])
+    
+    atSpawn := 0
+
+    runPath("searchForItems",[8250],1)
 
     options.CollectionLoops += 1
 }
@@ -796,13 +809,37 @@ doObby(){
 
 walkToObby(){
     updateStatus("Walking to Obby")
-    Send {a Down}
-    walkSleep(2300)
-    jump()
-    walkSleep(2000)
-    jump()
-    walkSleep(1850)
-    Send {a Up}
+    if(options.ArcanePath){
+        if(options.VIP){
+            send {a down}
+            walkSleep(2300)
+            jump()
+            walkSleep(500)
+            arcaneTeleport()
+            walkSleep(625)
+            jump()
+            walkSleep(1850)
+            send {a up}
+        }else{
+            send {a down}
+            walkSleep(2300)
+            jump()
+            walkSleep(500)
+            arcaneTeleport()
+            walkSleep(550)
+            jump()
+            walkSleep(1850)
+            send {a up}
+        }
+    } else {
+        send {a down}
+        walkSleep(2300)
+        jump()
+        walkSleep(2000)
+        jump()
+        walkSleep(1850)
+        send {a up}
+    }
 }
 
 obbyRun(){
@@ -863,6 +900,15 @@ mouseActions(){
 
     getRobloxPos(pX,pY,width,height)
 
+    ; close jake shop if popup
+
+    openP := getPositionFromAspectRatioUV(0.718,0.689,599/1015)
+    openP2 := getPositionFromAspectRatioUV(0.718,0.689,1135/1015)
+    MouseMove, % openP[1], % openP2[2]
+    Sleep, 200
+    MouseClick
+    Sleep, 200
+
     ; re equip
     if (options.AutoEquipEnabled){
         closeChat()
@@ -887,6 +933,45 @@ mouseActions(){
 
     Sleep, 250
 
+    if (options.ExtraRoblox){ ; for afking my 3rd alt lol
+        MouseMove, 2150, 700
+        Sleep, 300
+        MouseClick
+        Sleep, 250
+        jump()
+        Sleep, 500
+        Loop 5 {
+            Send {f}
+            Sleep, 200
+        }
+        MouseMove, 2300,800
+        Sleep, 300
+        MouseClick
+        Sleep, 250
+    }
+
+    if (playButtonChecks){
+        playButtonChecks -= 1
+        getRobloxPos(pX,pY,width,height)
+
+        PixelGetColor, color, % pX + (width/2), % pY + height*0.6, RGB
+        
+        if (compareColors(color,0xffffff) < 16){
+            MouseMove, % pX + (width/2), % pY + height*0.6
+            Sleep, 300
+            MouseClick
+            Sleep, 100
+            MouseClick
+            Sleep, 5000
+            MouseMove, % pX + (width*0.6), % pY + (height*0.85)
+            Sleep, 300
+            MouseClick
+            Sleep, 100
+            MouseMove, % pX + (width*0.35), % pY + (height*0.95)
+            Sleep, 300
+            MouseClick
+        }
+    }
     MouseMove, % pX + width*0.5, % pY + height*0.5
     Sleep, 300
     MouseClick
@@ -1098,7 +1183,7 @@ clickCraftingSlot(num,isPotionSlot := 0){
     if (isPotionSlot){ ; potion select sub menu
         scrollCenter := 0.365*width + rX
         scrollerHeight := 0.38*height
-        scrollStartY := 0.32*height + rY
+        scrollStartY := 0.325*height + rY
         slotHeight := (width/1920)*129
     }
 
@@ -1130,33 +1215,51 @@ clickCraftingSlot(num,isPotionSlot := 0){
     MouseMove, % mouseX + width/4, % mouseY
 }
 
-craftingClickAdd(totalSlots,maxes := 0){
+craftingClickAdd(totalSlots,maxes := 0,isGear := 0){
     if (!maxes){
         maxes := []
     }
 
     getRobloxPos(rX,rY,width,height)
 
-    startX := 0.647*width + rX
+    startXAmt := 0.6*width + rX
+    startX := 0.635*width + rX
     startY := 0.413*height + rY
-    slotSize := 0.0398*height
+    slotSize := 0.033*height
 
-    slotI := 0
+    if (isGear){
+        startXAmt := 0.582*width + rX
+        startX := 0.62*width + rX
+        startY := 0.395*height + rY
+        slotSize := 0.033*height
+    }
+
+    slotI := 1
     Loop %totalSlots% {
-        MouseMove, % startX, % startY + slotSize*(A_Index-1)
+        clickCount := maxes[slotI]
+        MouseMove, % (clickCount == 1) ? startX : startXAmt, % startY + slotSize*(A_Index-1)
         Sleep, 200
         MouseClick, WheelUp
         Sleep, 200
-        slotI += 1
-        clickCount := maxes[slotI]
-        clickCount := Min(clickCount,20)
-        Loop %clickCount% {
+        if (clickCount > 1){
             MouseClick
-            Sleep, 75
+            Sleep, 200
+            clickCount := clickCount ? clickCount : 100
+            Send % clickCount
+            Sleep, 200
         }
+        MouseMove, % startX, % startY + slotSize*(A_Index-1)
+        Sleep, 200
+        slotI += 1
+        MouseClick
+        Sleep, 200
     }
 
-    MouseMove, % 0.536*width, % 0.639*height + (1920-height)/50
+    if (isGear){
+        MouseMove, % 0.43*width + rX, % 0.635*height + rY
+    } else {
+        MouseMove, % 0.46*width + rX, % 0.63*height + rY
+    }
     Sleep, 250
     MouseClick
 }
@@ -1209,20 +1312,13 @@ handleCrafting(){
         MouseClick
         Sleep, 500
         updateStatus("Crafting Items")
-        if (options.CraftingJackpotGauntlet){
-            info := craftingInfo["Jackpot Gauntlet"]
-            clickCraftingSlot(info.slot)
-            Sleep, 200
-            craftingClickAdd(info.addSlots,info.maxes)
-            Sleep, 200
-        }
         if (options.CraftingGildedCoin){
             info := craftingInfo["Gilded Coin"]
             loopCount := info.attempts + Floor(info.addedAttempts*options.CraftingInterval)
             clickCraftingSlot(info.slot)
             Sleep, 200
             Loop %loopCount% {
-                craftingClickAdd(info.addSlots,info.maxes)
+                craftingClickAdd(info.addSlots,info.maxes,1)
                 Sleep, 200
             }
         }
@@ -1261,6 +1357,7 @@ screenshotInventories(){ ; from all closed
     Gdip_DisposeBitmap(ssMap)
     try webhookPost({content: "> ## Aura Storage Screenshot",files:[ssPath]})
 
+    Sleep, 200
     clickMenuButton(3)
     Sleep, 200
 
@@ -1441,38 +1538,49 @@ mainLoop(){
     BRCornerY := TLCornerY + height
     statusEffectHeight := Floor((height/1080)*54)
 
-    isActive := WinActive("Roblox")
-    if (isActive == robloxId){
-        if (!initialized){
-            updateStatus("Initializing")
-            initialize()
-        }
+    WinActivate, ahk_id %robloxId%
+    
+    if (!initialized){
+        updateStatus("Initializing")
+        initialize()
+    }
 
-        tMX := width/2
-        tMY := height/2
+    tMX := width/2
+    tMY := height/2
 
-        mouseActions()
+    mouseActions()
+    
+    Sleep, 250
+
+    if (options.InvScreenshotsEnabled && getUnixTime()-options.LastInvScreenshot >= (options.ScreenshotInterval*60)){
+        options.LastInvScreenshot := getUnixTime()
+
+        screenshotInventories()
+    }
+
+    Sleep, 250
+
+    if (getUnixTime()-options.LastCraftSession >=  options.CraftingInterval*60){
+        options.LastCraftSession := getUnixTime()
         
-        Sleep, 250
-
-        if (options.InvScreenshotsEnabled && getUnixTime()-options.LastInvScreenshot >= 3600){
-            options.LastInvScreenshot := getUnixTime()
-
-            screenshotInventories()
+        handleCrafting()
+    }
+    
+    if (options.DoingObby && (A_TickCount - lastObby) >= (obbyCooldown*1000)){
+        align()
+        obbyRun()
+        hasBuff := checkHasObbyBuff(BRCornerX,BRCornerY,statusEffectHeight)
+        Sleep, 1000
+        hasBuff := hasBuff || checkHasObbyBuff(BRCornerX,BRCornerY,statusEffectHeight)
+        if (!hasBuff){
+            Sleep, 5000
+            hasBuff := hasBuff || checkHasObbyBuff(BRCornerX,BRCornerY,statusEffectHeight)
         }
-
-        Sleep, 250
-
-        /*
-        if (getUnixTime()-options.LastCraftSession >=  options.CraftingInterval*60){
-            options.LastCraftSession := getUnixTime()
-            
-            handleCrafting()
-        } deprecated
-        */
-        
-        if (options.DoingObby && (A_TickCount - lastObby) >= (obbyCooldown*1000)){
+        if (!hasBuff)
+        {
             align()
+            updateStatus("Obby Failed, Retrying")
+            lastObby := A_TickCount - obbyCooldown*1000
             obbyRun()
             hasBuff := checkHasObbyBuff(BRCornerX,BRCornerY,statusEffectHeight)
             Sleep, 1000
@@ -1481,29 +1589,15 @@ mainLoop(){
                 Sleep, 5000
                 hasBuff := hasBuff || checkHasObbyBuff(BRCornerX,BRCornerY,statusEffectHeight)
             }
-            if (!hasBuff)
-            {
-                align()
-                updateStatus("Obby Failed, Retrying")
+            if (!hasBuff){
                 lastObby := A_TickCount - obbyCooldown*1000
-                obbyRun()
-                hasBuff := checkHasObbyBuff(BRCornerX,BRCornerY,statusEffectHeight)
-                Sleep, 1000
-                hasBuff := hasBuff || checkHasObbyBuff(BRCornerX,BRCornerY,statusEffectHeight)
-                if (!hasBuff){
-                    Sleep, 5000
-                    hasBuff := hasBuff || checkHasObbyBuff(BRCornerX,BRCornerY,statusEffectHeight)
-                }
-                if (!hasBuff){
-                    lastObby := A_TickCount - obbyCooldown*1000
-                }
             }
         }
+    }
 
-        if (options.CollectItems){
-            align(1)
-            searchForItems()
-        }
+    if (options.CollectItems){
+        align(1)
+        searchForItems()
     }
 
     /*
@@ -1527,7 +1621,7 @@ Gui Add, Button, gStopClick vStopButton x184 y224 w80 h23, F3 - Stop
 Gui Font, s11 Norm, Segoe UI
 Gui Add, Picture, gDiscordServerClick w26 h20 x462 y226, % mainDir "images\discordIcon.png"
 
-Gui Add, Tab3, vMainTabs x8 y8 w484 h210 +0x800000, Main|Status|Settings|Credits
+Gui Add, Tab3, vMainTabs x8 y8 w484 h210 +0x800000, Main|Crafting|Status|Settings|Credits
 ; main tab
 Gui Tab, 1
 
@@ -1560,7 +1654,6 @@ Gui Add, CheckBox, vCollectSpot5CheckBox x202 y174 w30 h26 +0x2, % " 5"
 Gui Add, CheckBox, vCollectSpot6CheckBox x242 y174 w30 h26 +0x2, % " 6"
 Gui Add, CheckBox, vCollectSpot7CheckBox x282 y174 w30 h26 +0x2, % " 7"
 
-/*
 ; crafting tab
 Gui Tab, 2
 Gui Font, s10 w600
@@ -1571,7 +1664,6 @@ Gui Font, s9 w600
 Gui Add, GroupBox, x21 y80 w221 h65 vItemCraftingOptionsGroup -Theme +0x50000007, Crafting Options
 Gui Font, s9 norm
 Gui Add, CheckBox, vCraftGildedCoinCheckBox x37 y98 w190 h22 +0x2, % " Gilded Coin"
-Gui Add, CheckBox, vCraftJackpotGauntletCheckBox x37 y118 w190 h22 +0x2, % " Jackpot Gauntlet"
 
 potionSlotOptions := "None||Fortune Potion I|Haste Potion I|Heavenly Potion I|Universe Potion I|Fortune Potion II|Haste Potion II|Heavenly Potion II|Fortune Potion III"
 Gui Font, s10 w600
@@ -1595,12 +1687,11 @@ Gui Add, Text, x32 y170 w170 h35 vCraftingIntervalText BackgroundTrans, Craft ev
 Gui Font, s9 norm
 Gui Add, Edit, x100 y171 w45 h18 vCraftingIntervalInput, 10
 Gui Add, UpDown, vCraftingIntervalUpDown Range1-300, 10
-*/
 
 
 
 ; status tab
-Gui Tab, 2
+Gui Tab, 3
 Gui Font, s10 w600
 Gui Add, GroupBox, x16 y40 w130 h170 vStatsGroup -Theme +0x50000007, Stats
 Gui Font, s9 norm
@@ -1608,16 +1699,18 @@ Gui Add, Text, vStatsDisplay x22 y58 w118 h146, runtime: 123`ndisconnects: 1000
 
 Gui Font, s10 w600
 Gui Add, GroupBox, x151 y40 w200 h170 vWebhookGroup -Theme +0x50000007, Discord Webhook
-Gui Font, s9 norm
+Gui Font, s7.5 norm
 Gui Add, CheckBox, vWebhookCheckBox x166 y63 w120 h16 +0x2 gEnableWebhookToggle, % " Enable Webhook"
 Gui Add, Text, x161 y85 w100 h20 vWebhookInputHeader BackgroundTrans, Webhook URL:
 Gui Add, Edit, x166 y103 w169 h18 vWebhookInput,% ""
-Gui Font, s8 norm
 Gui Add, Button, gWebhookHelpClick vWebhookHelpButton x325 y50 w23 h23, ?
 Gui Add, CheckBox, vWebhookImportantOnlyCheckBox x166 y126 w140 h16 +0x2, % " Important events only"
 Gui Add, Text, vWebhookUserIDHeader x161 y145 w150 h14 BackgroundTrans, % "Discord User ID (Pings):"
 Gui Add, Edit, x166 y162 w169 h16 vWebhookUserIDInput,% ""
-Gui Add, CheckBox, vWebhookInventoryScreenshots x161 y183 w170 h16 +0x2, % "Hourly Inventory Screenshots"
+Gui Font, s7.4 norm
+Gui Add, CheckBox, vWebhookInventoryScreenshots x161 y182 w130 h26 +0x2, % "Inventory Screenshots (mins)"
+Gui Add, Edit, x294 y186 w50 h18
+Gui Add, UpDown, vInvScreenshotinterval Range1-1440
 
 Gui Font, s10 w600
 Gui Add, GroupBox, x356 y40 w128 h50 vStatusOtherGroup -Theme +0x50000007, Other
@@ -1635,13 +1728,14 @@ Gui Add, Edit, vWebhookRollPingInput x370 y162 w102 h18, 100000
 Gui Add, CheckBox, vWebhookRollImageCheckBox gWebhookRollImageCheckBoxClick x365 y183 w100 h18, Aura Images
 
 ; settings tab
-Gui Tab, 3
+Gui Tab, 4
 Gui Font, s10 w600
 Gui Add, GroupBox, x16 y40 w467 h65 vGeneralSettingsGroup -Theme +0x50000007, General
 Gui Font, s9 norm
 Gui Add, CheckBox, vVIPCheckBox x32 y58 w150 h22 +0x2, % " VIP Gamepass Owned"
-Gui Add, Text, x222 y60 w200 h22, % "Collection Back Button Y Offset:"
-Gui Add, Edit, x396 y60 w50 h18
+Gui Add, CheckBox, vArcaneCheckBox gArcaneCheckBoxClick x222 y58 w200 h22 +0x2, % " Arcane Teleport Paths"
+Gui Add, Text, x222 y82 w200 h18, % "Collection Back Button Y Offset:"
+Gui Add, Edit, x396 y81 w50 h18
 Gui Add, UpDown, vBackOffsetUpDown Range-500-500, 0
 Gui Add, Button, vImportSettingsButton gImportSettingsClick x30 y80 w130 h20, Import Settings
 
@@ -1654,7 +1748,7 @@ Gui Add, Edit, x31 y167 w437 h20 vPrivateServerInput,% ""
 
 
 ; credits tab
-Gui Tab, 4
+Gui Tab, 5
 Gui Font, s10 w600
 Gui Add, GroupBox, x16 y40 w231 h133 vCreditsGroup -Theme +0x50000007, The Creator
 Gui Add, Picture, w75 h75 x23 y62, % mainDir "images\pfp.png"
@@ -1692,6 +1786,7 @@ Gui mainUI:Default
 
 
 global directValues := {"ObbyCheckBox":"DoingObby"
+    ,"ArcaneCheckBox":"ArcanePath"
     ,"ObbyBuffCheckBox":"CheckObbyBuff"
     ,"CollectCheckBox":"CollectItems"
     ,"VIPCheckBox":"VIP"
@@ -1699,8 +1794,8 @@ global directValues := {"ObbyCheckBox":"DoingObby"
     ,"AutoEquipCheckBox":"AutoEquipEnabled"
     ,"CraftingIntervalUpDown":"CraftingInterval"
     ,"ItemCraftingCheckBox":"ItemCraftingEnabled"
+    ,"InvScreenshotinterval":"ScreenshotInterval"
     ,"CraftGildedCoinCheckBox":"CraftingGildedCoin"
-    ,"CraftJackpotGauntletCheckBox":"CraftingJackpotGauntlet"
     ,"PotionCraftingCheckBox":"PotionCraftingEnabled"
     ,"ReconnectCheckBox":"ReconnectEnabled"
     ,"WebhookCheckBox":"WebhookEnabled"
@@ -2103,17 +2198,25 @@ WebhookRollImageCheckBoxClick:
     }
     return
 
+ArcaneCheckBoxClick:
+    Gui mainUI:Default
+    GuiControlGet,v,,ArcaneCheckBox
+    if (v){
+        MsgBox, 0, Arcane Teleport Notice, % "With the Arcane Teleport option enabled, please ensure that you are auto-equipping any type of Arcane aura at ALL TIMES, otherwise your paths will break.`n`nRemember: It is preferred to select a slot with Arcane in the non-scrolled Aura Storage state (not scrolled down), as reconnecting will reset the scroll upon rejoin, possibly causing you to select a different aura."
+    }
+    return
+
 MoreCreditsClick:
     creditText =
 (
 Development
 
 - Assistant Developer - Stanley (stanleyrekt)
+- Path Contribution - sanji (sir.moxxi), Flash (drflash55)
 - Path Inspiration - Aod_Shanaenae
 
 Supporters (Donations)
 
-- @happythunder
 - @Bigman
 - @sir.moxxi (sanji)
 - @zrx

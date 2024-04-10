@@ -170,3 +170,16 @@ alignCamera(){
     MouseClick
     Sleep, 500
 }
+
+global azertyReplace := {"w": "z", "a": "q"} 
+
+sendKey(key, type = ""){
+ azertyKey := azertyReplace[key]
+ key := options.AzertyLayout && azertyKey ? azertyKey : key
+ 
+ Send {%key% %type%}
+}
+
+arcaneTeleport(){
+    press("x",50)
+}
