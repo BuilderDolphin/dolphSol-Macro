@@ -300,7 +300,7 @@ webhookPost(data := 0){
     WebRequest.WaitForResponse()
 }
 
-getAuraInfo(starColor := 0, is100k := 0){
+getAuraInfo(starColor := 0, is100k := 0, is1m := 0){
     tName := staticData["name" starColor]
     if (tName){
         tImage := ""
@@ -309,10 +309,10 @@ getAuraInfo(starColor := 0, is100k := 0){
             tName := staticData["nameMutation100k" starColor]
             tImage := staticData["imageMutation100k" starColor]
             tRarity := staticData["rarityMutation100k" starColor]
-        } else if (staticData["nameMutation10m" starColor] && !is100k){
-            tName := staticData["nameMutation10m" starColor]
-            tImage := staticData["imageMutation10m" starColor]
-            tRarity := staticData["rarityMutation10m" starColor]
+        } else if (staticData["nameMutation1m" starColor] && is1m){
+            tName := staticData["nameMutation1m" starColor]
+            tImage := staticData["imageMutation1m" starColor]
+            tRarity := staticData["rarityMutation1m" starColor]
         } else {
             tImage := staticData["image" starColor]
             tRarity := staticData["rarity" starColor]
@@ -338,11 +338,12 @@ getAuraInfo(starColor := 0, is100k := 0){
     }
 }
 
-rollDetection(bypass := 0){
+rollDetection(bypass := 0,is1m := 0){
     if (rareDisplaying && !bypass) {
         return
     }
     if (WinActive("Roblox") != WinExist("Roblox")){
+        rareDisplaying := 0
         return
     }
     getRobloxPos(rX,rY,width,height)
@@ -362,7 +363,7 @@ rollDetection(bypass := 0){
         rareDisplaying := 1
         if (centerColored){
             rareDisplaying := 2
-            Sleep, 500
+            Sleep, 750
             blackCorners := 0
             for i,point in scanPoints {
                 PixelGetColor, pColor, % point[1], % point[2], RGB
@@ -374,9 +375,45 @@ rollDetection(bypass := 0){
                 rareDisplaying := 0
                 return
             }
+
+            if (getAuraInfo(cColor,0,1)){
+                start := A_TickCount
+
+                topLeft := getFromUV(-0.15,-0.15,rX,rY,width,height)
+                bottomRight := getFromUV(0.15,0.15,rX,rY,width,height)
+                squareScale := [bottomRight[1]-topLeft[1]+1,bottomRight[2]-topLeft[2]+1]
+                totalPixels := 32*32
+
+                retrievedMap := Gdip_BitmapFromScreen(topLeft[1] "|" topLeft[2] "|" squareScale[1] "|" squareScale[2])
+                starMap := Gdip_ResizeBitmap(retrievedMap,32,32,0)
+
+                effect := Gdip_CreateEffect(5,-30,60)
+                Gdip_BitmapApplyEffect(starMap,effect)
+
+                starPixels := 0
+                Loop, % 50 {
+                    x := A_Index - 1
+                    Loop, % 50 {
+                        y := A_Index - 1
+
+                        pixelColor := Gdip_GetPixel(starMap, x, y)
+
+                        if (compareColors(pixelColor,0x000000) > 32) {
+                            starPixels += 1
+                        }
+                    }
+                }
+
+                is1m := starPixels/totalPixels >= 0.24
+
+                Gdip_DisposeEffect(effect)
+                Gdip_DisposeBitmap(starMap)
+                Gdip_DisposeBitmap(retrievedMap)
+            }
+            OutputDebug, % is1m
             
             Sleep, 8000
-            rollDetection(cColor)
+            rollDetection(cColor,is1m)
         } else {
             if (sendMinimum && sendMinimum < 10000) {
                 webhookPost({embedContent:"You rolled a 1/1k+",embedTitle:"Roll",pings: (pingMinimum && pingMinimum < 10000)})
@@ -416,8 +453,8 @@ rollDetection(bypass := 0){
         Sleep, 6000
         rareDisplaying := 0
     } else if (rareDisplaying >= 2){
-        auraInfo := getAuraInfo(bypass,0)
-        if ((auraInfo.rarity >= 99999) && (auraInfo.rarity < 10000000)){
+        auraInfo := getAuraInfo(bypass,0,is1m)
+        if ((auraInfo.rarity >= 99999) && (auraInfo.rarity < 1000000)){
             rareDisplaying := 0
             return
         }

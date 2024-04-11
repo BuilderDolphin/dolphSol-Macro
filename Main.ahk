@@ -69,7 +69,7 @@ global potionIndex := {0:"None"
     ,8:"Universe Potion I"}
 
 
-global craftingInfo := {"Gilded Coin":{slot:13,addSlots:1,maxes:[1],attempts:4,addedAttempts:1/5}
+global craftingInfo := {"Gilded Coin":{slot:13,addSlots:1,maxes:[1],attempts:5,addedAttempts:1}
     ,"Fortune Potion I":{slot:1,subSlot:1,addSlots:4,maxes:[5,1,5,1],attempts:2}
     ,"Fortune Potion II":{slot:1,subSlot:2,addSlots:5,maxes:[1,10,5,10,2],attempts:2}
     ,"Fortune Potion III":{slot:1,subSlot:3,addSlots:5,maxes:[1,15,10,15,5],attempts:2}
@@ -1100,16 +1100,15 @@ clamp(x,mn,mx){
 global menuBarOffset := 10 ;10 pixels from left edge
 
 getMenuButtonPosition(num, ByRef posX := "", ByRef posY := ""){ ; num is 1-7, 1 being top, 7 only existing if you are the private server owner
-    num -= 1 ;easter button
     getRobloxPos(rX, rY, width, height)
 
     menuBarVSpacing := 10.5*(height/1080)
     menuBarButtonSize := 58*(width/1920)
     menuEdgeCenter := [rX + menuBarOffset, rY + (height/2)]
-    startPos := [menuEdgeCenter[1]+(menuBarButtonSize/2),menuEdgeCenter[2]+(menuBarButtonSize/4)-(menuBarButtonSize+menuBarVSpacing-1)*3]
+    startPos := [menuEdgeCenter[1]+(menuBarButtonSize/2),menuEdgeCenter[2]+(menuBarButtonSize/4)-(menuBarButtonSize+menuBarVSpacing-1)*4] ; 3 to 4 because easter
     
     posX := startPos[1]
-    posY := startPos[2] + (menuBarButtonSize+menuBarVSpacing)*(num-1) + (menuBarButtonSize/2) ; since easter
+    posY := startPos[2] + (menuBarButtonSize+menuBarVSpacing)*(num-1)
 
     MouseMove, % posX, % posY
 }
