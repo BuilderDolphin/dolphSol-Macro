@@ -309,7 +309,7 @@ getAuraInfo(starColor := 0, is100k := 0, is1m := 0){
             tName := staticData["nameMutation100k" starColor]
             tImage := staticData["imageMutation100k" starColor]
             tRarity := staticData["rarityMutation100k" starColor]
-        } else if (staticData["nameMutation1m" starColor] && is1m){
+        } else if (staticData["nameMutation1m" starColor] && is1m && !is100k){
             tName := staticData["nameMutation1m" starColor]
             tImage := staticData["imageMutation1m" starColor]
             tRarity := staticData["rarityMutation1m" starColor]
