@@ -376,7 +376,11 @@ rollDetection(bypass := 0,is1m := 0){
                 return
             }
 
-            if (getAuraInfo(cColor,0,1)){
+            tData1mCheck := getAuraInfo(cColor,0,1)
+            if (tData1mCheck && tData1mCheck.rarity < 1000000){
+                tData1mCheck := 0
+            }
+            if (tData1mCheck){
                 start := A_TickCount
 
                 topLeft := getFromUV(-0.15,-0.15,rX,rY,width,height)
