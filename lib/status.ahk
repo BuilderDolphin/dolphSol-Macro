@@ -334,7 +334,7 @@ getAuraInfo(starColor := 0, is100k := 0, is1m := 0){
         if (lowestCompNum > 32){
             return 0
         }
-        return getAuraInfo(targetColor,is100k)
+        return getAuraInfo(targetColor,is100k,is1m)
     }
 }
 
@@ -414,7 +414,6 @@ rollDetection(bypass := 0,is1m := 0){
                 Gdip_DisposeBitmap(starMap)
                 Gdip_DisposeBitmap(retrievedMap)
             }
-            OutputDebug, % is1m
             
             Sleep, 8000
             rollDetection(cColor,is1m)
