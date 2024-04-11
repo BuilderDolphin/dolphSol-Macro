@@ -55,6 +55,7 @@ global mainDir := A_ScriptDir "\"
 configPath := mainDir . "settings\config.ini"
 global ssPath := mainDir . "images\ss.png"
 global pathDir := mainDir . "paths\"
+global imgDir := mainDir . "images\"
 
 configHeader := "; dolphSol Settings`n;   Do not put spaces between equals`n;   Additions may break this file and the macro overall, please be cautious`n;   If you mess up this file, clear it entirely and restart the macro`n`n[Options]`r`n"
 
@@ -502,12 +503,10 @@ arcaneTeleport(){
 
 global initialized := 0
 global running := 0
-global playButtonChecks := 2
 
 initialize()
 {
     initialized := 1
-    playButtonChecks := 2
     resetZoom()
     if (options.InitialAlign){
         ; runPath("initialAlignment",[],1) no more no reset!
@@ -950,28 +949,6 @@ mouseActions(){
         Sleep, 250
     }
 
-    if (playButtonChecks){
-        playButtonChecks -= 1
-        getRobloxPos(pX,pY,width,height)
-
-        PixelGetColor, color, % pX + (width/2), % pY + height*0.6, RGB
-        
-        if (compareColors(color,0xffffff) < 16){
-            MouseMove, % pX + (width/2), % pY + height*0.6
-            Sleep, 300
-            MouseClick
-            Sleep, 100
-            MouseClick
-            Sleep, 5000
-            MouseMove, % pX + (width*0.6), % pY + (height*0.85)
-            Sleep, 300
-            MouseClick
-            Sleep, 100
-            MouseMove, % pX + (width*0.35), % pY + (height*0.95)
-            Sleep, 300
-            MouseClick
-        }
-    }
     MouseMove, % pX + width*0.5, % pY + height*0.5
     Sleep, 300
     MouseClick
@@ -1400,6 +1377,44 @@ closeRoblox(){
     WinClose, % "Roblox Crash"
 }
 
+playBitMap := Gdip_CreateBitmapFromFile(imgDir . "play.png")
+
+isPlayButtonOpen(){
+    global playBitMap
+
+    getRobloxPos(pX,pY,width,height)
+    
+    targetW := height*0.025
+    startX := width*0.5 - targetW/2
+    retrievedMap := Gdip_BitmapFromScreen(pX + startX "|" pY + height*0.575 "|" targetW "|" height*0.05)
+    effect := Gdip_CreateEffect(5,-60,80)
+    Gdip_BitmapApplyEffect(retrievedMap,effect)
+    playMap := Gdip_ResizeBitmap(retrievedMap,30,30,0)
+
+    blackPixels := 0
+    whitePixels := 0
+
+    Loop % 30 {
+        tX := A_Index-1
+        Loop % 30 {
+            tY := A_Index-1
+            pixelColor := Gdip_GetPixel(playMap, tX, tY)
+            blackPixels += compareColors(pixelColor,0x000000) < 32
+            whitePixels += compareColors(pixelColor,0xffffff) < 32
+        }
+    }
+
+    Gdip_DisposeEffect(effect)
+    Gdip_DisposeBitmap(playMap)
+    Gdip_DisposeBitmap(retrievedMap)
+    
+    if (whitePixels > 30 && blackPixels > 30){
+        ratio := whitePixels/blackPixels
+
+        return (ratio > 0.35) && (ratio < 0.65)
+    }
+}
+
 attemptReconnect(failed := 0){
     initialized := 0
     if (reconnecting && !failed){
@@ -1437,9 +1452,13 @@ attemptReconnect(failed := 0){
         Loop 120 {
             getRobloxPos(pX,pY,width,height)
 
-            PixelGetColor, color, % pX + (width/2), % pY + height*0.6, RGB
+            valid := 0
+            if (isPlayButtonOpen()){
+                Sleep, 2000
+                valid := isPlayButtonOpen()
+            }
             
-            if (compareColors(color,0xffffff) < 16){
+            if (valid){
                 MouseMove, % pX + (width/2), % pY + height*0.6
                 Sleep, 300
                 MouseClick
