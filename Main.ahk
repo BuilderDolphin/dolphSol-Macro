@@ -2244,6 +2244,9 @@ Supporters (Donations)
 - @Maz - Member
 - @dead_is4
 - @CorruptExpy_II
+- @Ami.n
+- @s.a.t.s
+- @UnamedWasp
 
 Thank you to everyone who currently supports and uses the macro! You guys are amazing!
 )
