@@ -53,7 +53,7 @@ statusEffectSpace := 5
 global mainDir := A_ScriptDir "\"
 
 configPath := mainDir . "settings\config.ini"
-global ssPath := mainDir . "images\ss.png"
+global ssPath := "ss.jpg"
 global pathDir := mainDir . "paths\"
 global imgDir := mainDir . "images\"
 
@@ -262,81 +262,81 @@ CreateFormData(ByRef retData, ByRef retHeader, objParam) {
 
 Class CreateFormData {
 
-	__New(ByRef retData, ByRef retHeader, objParam) {
+    __New(ByRef retData, ByRef retHeader, objParam) {
 
-		Local CRLF := "`r`n", i, k, v, str, pvData
-		; Create a random Boundary
-		Local Boundary := this.RandomBoundary()
-		Local BoundaryLine := "------------------------------" . Boundary
+        Local CRLF := "`r`n", i, k, v, str, pvData
+        ; Create a random Boundary
+        Local Boundary := this.RandomBoundary()
+        Local BoundaryLine := "------------------------------" . Boundary
 
-    this.Len := 0 ; GMEM_ZEROINIT|GMEM_FIXED = 0x40
-    this.Ptr := DllCall( "GlobalAlloc", "UInt",0x40, "UInt",1, "Ptr"  )          ; allocate global memory
+        this.Len := 0 ; GMEM_ZEROINIT|GMEM_FIXED = 0x40
+        this.Ptr := DllCall( "GlobalAlloc", "UInt",0x40, "UInt",1, "Ptr" ) ; allocate global memory
 
-		; Loop input paramters
-		For k, v in objParam
-		{
-			If IsObject(v) {
-				For i, FileName in v
-				{
-					str := BoundaryLine . CRLF
-					     . "Content-Disposition: form-data; name=""" . k . """; filename=""" . FileName . """" . CRLF
-					     . "Content-Type: " . this.MimeType(FileName) . CRLF . CRLF
-          this.StrPutUTF8( str )
-          this.LoadFromFile( Filename )
-          this.StrPutUTF8( CRLF )
-				}
-			} Else {
-				str := BoundaryLine . CRLF
-				     . "Content-Disposition: form-data; name=""" . k """" . CRLF . CRLF
-				     . v . CRLF
-        this.StrPutUTF8( str )
-			}
-		}
+        ; Loop input paramters
+        For k, v in objParam
+        {
+            If IsObject(v) {
+                For i, FileName in v
+                {
+                    str := BoundaryLine . CRLF
+                    . "Content-Disposition: form-data; name=""" . k . """; filename=""" . FileName . """" . CRLF
+                    . "Content-Type: " . this.MimeType(FileName) . CRLF . CRLF
+                    this.StrPutUTF8( str )
+                    this.LoadFromFile( Filename )
+                    this.StrPutUTF8( CRLF )
+                }
+            } Else {
+                str := BoundaryLine . CRLF
+                . "Content-Disposition: form-data; name=""" . k """" . CRLF . CRLF
+                . v . CRLF
+                this.StrPutUTF8( str )
+            }
+        }
 
-		this.StrPutUTF8( BoundaryLine . "--" . CRLF )
+        this.StrPutUTF8( BoundaryLine . "--" . CRLF )
 
-    ; Create a bytearray and copy data in to it.
-    retData := ComObjArray( 0x11, this.Len ) ; Create SAFEARRAY = VT_ARRAY|VT_UI1
-    pvData  := NumGet( ComObjValue( retData ) + 8 + A_PtrSize )
-    DllCall( "RtlMoveMemory", "Ptr",pvData, "Ptr",this.Ptr, "Ptr",this.Len )
+        ; Create a bytearray and copy data in to it.
+        retData := ComObjArray( 0x11, this.Len ) ; Create SAFEARRAY = VT_ARRAY|VT_UI1
+        pvData := NumGet( ComObjValue( retData ) + 8 + A_PtrSize )
+        DllCall( "RtlMoveMemory", "Ptr",pvData, "Ptr",this.Ptr, "Ptr",this.Len )
 
-    this.Ptr := DllCall( "GlobalFree", "Ptr",this.Ptr, "Ptr" )                   ; free global memory 
+        this.Ptr := DllCall( "GlobalFree", "Ptr",this.Ptr, "Ptr" ) ; free global memory 
 
-    retHeader := "multipart/form-data; boundary=----------------------------" . Boundary
-	}
+        retHeader := "multipart/form-data; boundary=----------------------------" . Boundary
+    }
 
-  StrPutUTF8( str ) {
-    Local ReqSz := StrPut( str, "utf-8" ) - 1
-    this.Len += ReqSz                                  ; GMEM_ZEROINIT|GMEM_MOVEABLE = 0x42
-    this.Ptr := DllCall( "GlobalReAlloc", "Ptr",this.Ptr, "UInt",this.len + 1, "UInt", 0x42 )   
-    StrPut( str, this.Ptr + this.len - ReqSz, ReqSz, "utf-8" )
-  }
-  
-  LoadFromFile( Filename ) {
-    Local objFile := FileOpen( FileName, "r" )
-    this.Len += objFile.Length                     ; GMEM_ZEROINIT|GMEM_MOVEABLE = 0x42 
-    this.Ptr := DllCall( "GlobalReAlloc", "Ptr",this.Ptr, "UInt",this.len, "UInt", 0x42 )
-    objFile.RawRead( this.Ptr + this.Len - objFile.length, objFile.length )
-    objFile.Close()       
-  }
+    StrPutUTF8( str ) {
+        Local ReqSz := StrPut( str, "utf-8" ) - 1
+        this.Len += ReqSz ; GMEM_ZEROINIT|GMEM_MOVEABLE = 0x42
+        this.Ptr := DllCall( "GlobalReAlloc", "Ptr",this.Ptr, "UInt",this.len + 1, "UInt", 0x42 ) 
+        StrPut( str, this.Ptr + this.len - ReqSz, ReqSz, "utf-8" )
+    }
 
-	RandomBoundary() {
-		str := "0|1|2|3|4|5|6|7|8|9|a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z"
-		Sort, str, D| Random
-		str := StrReplace(str, "|")
-		Return SubStr(str, 1, 12)
-	}
+    LoadFromFile( Filename ) {
+        Local objFile := FileOpen( FileName, "r" )
+        this.Len += objFile.Length ; GMEM_ZEROINIT|GMEM_MOVEABLE = 0x42 
+        this.Ptr := DllCall( "GlobalReAlloc", "Ptr",this.Ptr, "UInt",this.len, "UInt", 0x42 )
+        objFile.RawRead( this.Ptr + this.Len - objFile.length, objFile.length )
+        objFile.Close() 
+    }
 
-	MimeType(FileName) {
-		n := FileOpen(FileName, "r").ReadUInt()
-		Return (n        = 0x474E5089) ? "image/png"
-		     : (n        = 0x38464947) ? "image/gif"
-		     : (n&0xFFFF = 0x4D42    ) ? "image/bmp"
-		     : (n&0xFFFF = 0xD8FF    ) ? "image/jpeg"
-		     : (n&0xFFFF = 0x4949    ) ? "image/tiff"
-		     : (n&0xFFFF = 0x4D4D    ) ? "image/tiff"
-		     : "application/octet-stream"
-	}
+    RandomBoundary() {
+        str := "0|1|2|3|4|5|6|7|8|9|a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z"
+        Sort, str, D| Random
+        str := StrReplace(str, "|")
+        Return SubStr(str, 1, 12)
+    }
+
+    MimeType(FileName) {
+        n := FileOpen(FileName, "r").ReadUInt()
+        Return (n = 0x474E5089) ? "image/png"
+        : (n = 0x38464947) ? "image/gif"
+        : (n&0xFFFF = 0x4D42 ) ? "image/bmp"
+        : (n&0xFFFF = 0xD8FF ) ? "image/jpeg"
+        : (n&0xFFFF = 0x4949 ) ? "image/tiff"
+        : (n&0xFFFF = 0x4D4D ) ? "image/tiff"
+        : "application/octet-stream"
+    }
 
 }
 
@@ -365,7 +365,7 @@ webhookPost(data := 0){
 		}
 		)"
 
-    if (!data.embedContent || data.noEmbed)
+    if ((!data.embedContent && !data.embedTitle) || data.noEmbed)
         payload_json := RegExReplace(payload_json, ",.*""embeds.*}]", "")
     
 
@@ -1082,7 +1082,7 @@ getMenuButtonPosition(num, ByRef posX := "", ByRef posY := ""){ ; num is 1-7, 1 
     menuBarVSpacing := 10.5*(height/1080)
     menuBarButtonSize := 58*(width/1920)
     menuEdgeCenter := [rX + menuBarOffset, rY + (height/2)]
-    startPos := [menuEdgeCenter[1]+(menuBarButtonSize/2),menuEdgeCenter[2]+(menuBarButtonSize/4)-(menuBarButtonSize+menuBarVSpacing-1)*4] ; 3 to 4 because easter
+    startPos := [menuEdgeCenter[1]+(menuBarButtonSize/2),menuEdgeCenter[2]+(menuBarButtonSize/4)-(menuBarButtonSize+menuBarVSpacing-1)*3.5] ; 3 to 4 because easter
     
     posX := startPos[1]
     posY := startPos[2] + (menuBarButtonSize+menuBarVSpacing)*(num-1)
@@ -1331,7 +1331,7 @@ screenshotInventories(){ ; from all closed
     ssMap := Gdip_BitmapFromScreen(topLeft[1] "|" topLeft[2] "|" totalSize[1] "|" totalSize[2])
     Gdip_SaveBitmapToFile(ssMap,ssPath)
     Gdip_DisposeBitmap(ssMap)
-    try webhookPost({content: "> ## Aura Storage Screenshot",files:[ssPath]})
+    try webhookPost({files:[ssPath],embedImage:"attachment://ss.jpg",embedTitle: "Aura Storage Screenshot"})
 
     Sleep, 200
     clickMenuButton(3)
@@ -1342,7 +1342,7 @@ screenshotInventories(){ ; from all closed
     ssMap := Gdip_BitmapFromScreen(topLeft[1] "|" topLeft[2] "|" totalSize[1] "|" totalSize[2])
     Gdip_SaveBitmapToFile(ssMap,ssPath)
     Gdip_DisposeBitmap(ssMap)
-    try webhookPost({content: "> ## Item Inventory Screenshot",files:[ssPath]})
+    try webhookPost({files:[ssPath],embedImage:"attachment://ss.jpg",embedTitle: "Item Inventory Screenshot"})
 
     MouseClick
 }
@@ -1471,7 +1471,7 @@ attemptReconnect(failed := 0){
             Sleep 1000
         }
         updateStatus("Reconnecting, Game Loaded")
-        Sleep, 5000
+        Sleep, 10000
         getRobloxPos(pX,pY,width,height)
         MouseMove, % pX + (width*0.6), % pY + (height*0.85)
         Sleep, 300

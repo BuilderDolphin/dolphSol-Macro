@@ -6,6 +6,7 @@ CoordMode, Pixel, Screen
 CoordMode, Mouse, Screen
 
 #Include, GDIP_All.ahk
+#Include, ocr.ahk
 
 Gdip_Startup()
 
@@ -13,7 +14,8 @@ global mainDir
 RegExMatch(A_ScriptDir, "(.*)\\", mainDir)
 
 global configPath := mainDir . "settings\config.ini"
-global ssPath := mainDir . "images\ss.png"
+global ssPath := "ss.jpg"
+global imageDir := mainDir . "images\"
 
 
 global webhookEnabled := 0
@@ -174,81 +176,81 @@ CreateFormData(ByRef retData, ByRef retHeader, objParam) {
 
 Class CreateFormData {
 
-	__New(ByRef retData, ByRef retHeader, objParam) {
+    __New(ByRef retData, ByRef retHeader, objParam) {
 
-		Local CRLF := "`r`n", i, k, v, str, pvData
-		; Create a random Boundary
-		Local Boundary := this.RandomBoundary()
-		Local BoundaryLine := "------------------------------" . Boundary
+        Local CRLF := "`r`n", i, k, v, str, pvData
+        ; Create a random Boundary
+        Local Boundary := this.RandomBoundary()
+        Local BoundaryLine := "------------------------------" . Boundary
 
-    this.Len := 0 ; GMEM_ZEROINIT|GMEM_FIXED = 0x40
-    this.Ptr := DllCall( "GlobalAlloc", "UInt",0x40, "UInt",1, "Ptr"  )          ; allocate global memory
+        this.Len := 0 ; GMEM_ZEROINIT|GMEM_FIXED = 0x40
+        this.Ptr := DllCall( "GlobalAlloc", "UInt",0x40, "UInt",1, "Ptr" ) ; allocate global memory
 
-		; Loop input paramters
-		For k, v in objParam
-		{
-			If IsObject(v) {
-				For i, FileName in v
-				{
-					str := BoundaryLine . CRLF
-					     . "Content-Disposition: form-data; name=""" . k . """; filename=""" . FileName . """" . CRLF
-					     . "Content-Type: " . this.MimeType(FileName) . CRLF . CRLF
-          this.StrPutUTF8( str )
-          this.LoadFromFile( Filename )
-          this.StrPutUTF8( CRLF )
-				}
-			} Else {
-				str := BoundaryLine . CRLF
-				     . "Content-Disposition: form-data; name=""" . k """" . CRLF . CRLF
-				     . v . CRLF
-        this.StrPutUTF8( str )
-			}
-		}
+        ; Loop input paramters
+        For k, v in objParam
+        {
+            If IsObject(v) {
+                For i, FileName in v
+                {
+                    str := BoundaryLine . CRLF
+                    . "Content-Disposition: form-data; name=""" . k . """; filename=""" . FileName . """" . CRLF
+                    . "Content-Type: " . this.MimeType(FileName) . CRLF . CRLF
+                    this.StrPutUTF8( str )
+                    this.LoadFromFile( Filename )
+                    this.StrPutUTF8( CRLF )
+                }
+            } Else {
+                str := BoundaryLine . CRLF
+                . "Content-Disposition: form-data; name=""" . k """" . CRLF . CRLF
+                . v . CRLF
+                this.StrPutUTF8( str )
+            }
+        }
 
-		this.StrPutUTF8( BoundaryLine . "--" . CRLF )
+        this.StrPutUTF8( BoundaryLine . "--" . CRLF )
 
-    ; Create a bytearray and copy data in to it.
-    retData := ComObjArray( 0x11, this.Len ) ; Create SAFEARRAY = VT_ARRAY|VT_UI1
-    pvData  := NumGet( ComObjValue( retData ) + 8 + A_PtrSize )
-    DllCall( "RtlMoveMemory", "Ptr",pvData, "Ptr",this.Ptr, "Ptr",this.Len )
+        ; Create a bytearray and copy data in to it.
+        retData := ComObjArray( 0x11, this.Len ) ; Create SAFEARRAY = VT_ARRAY|VT_UI1
+        pvData := NumGet( ComObjValue( retData ) + 8 + A_PtrSize )
+        DllCall( "RtlMoveMemory", "Ptr",pvData, "Ptr",this.Ptr, "Ptr",this.Len )
 
-    this.Ptr := DllCall( "GlobalFree", "Ptr",this.Ptr, "Ptr" )                   ; free global memory 
+        this.Ptr := DllCall( "GlobalFree", "Ptr",this.Ptr, "Ptr" ) ; free global memory 
 
-    retHeader := "multipart/form-data; boundary=----------------------------" . Boundary
-	}
+        retHeader := "multipart/form-data; boundary=----------------------------" . Boundary
+    }
 
-  StrPutUTF8( str ) {
-    Local ReqSz := StrPut( str, "utf-8" ) - 1
-    this.Len += ReqSz                                  ; GMEM_ZEROINIT|GMEM_MOVEABLE = 0x42
-    this.Ptr := DllCall( "GlobalReAlloc", "Ptr",this.Ptr, "UInt",this.len + 1, "UInt", 0x42 )   
-    StrPut( str, this.Ptr + this.len - ReqSz, ReqSz, "utf-8" )
-  }
-  
-  LoadFromFile( Filename ) {
-    Local objFile := FileOpen( FileName, "r" )
-    this.Len += objFile.Length                     ; GMEM_ZEROINIT|GMEM_MOVEABLE = 0x42 
-    this.Ptr := DllCall( "GlobalReAlloc", "Ptr",this.Ptr, "UInt",this.len, "UInt", 0x42 )
-    objFile.RawRead( this.Ptr + this.Len - objFile.length, objFile.length )
-    objFile.Close()       
-  }
+    StrPutUTF8( str ) {
+        Local ReqSz := StrPut( str, "utf-8" ) - 1
+        this.Len += ReqSz ; GMEM_ZEROINIT|GMEM_MOVEABLE = 0x42
+        this.Ptr := DllCall( "GlobalReAlloc", "Ptr",this.Ptr, "UInt",this.len + 1, "UInt", 0x42 ) 
+        StrPut( str, this.Ptr + this.len - ReqSz, ReqSz, "utf-8" )
+    }
 
-	RandomBoundary() {
-		str := "0|1|2|3|4|5|6|7|8|9|a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z"
-		Sort, str, D| Random
-		str := StrReplace(str, "|")
-		Return SubStr(str, 1, 12)
-	}
+    LoadFromFile( Filename ) {
+        Local objFile := FileOpen( FileName, "r" )
+        this.Len += objFile.Length ; GMEM_ZEROINIT|GMEM_MOVEABLE = 0x42 
+        this.Ptr := DllCall( "GlobalReAlloc", "Ptr",this.Ptr, "UInt",this.len, "UInt", 0x42 )
+        objFile.RawRead( this.Ptr + this.Len - objFile.length, objFile.length )
+        objFile.Close() 
+    }
 
-	MimeType(FileName) {
-		n := FileOpen(FileName, "r").ReadUInt()
-		Return (n        = 0x474E5089) ? "image/png"
-		     : (n        = 0x38464947) ? "image/gif"
-		     : (n&0xFFFF = 0x4D42    ) ? "image/bmp"
-		     : (n&0xFFFF = 0xD8FF    ) ? "image/jpeg"
-		     : (n&0xFFFF = 0x4949    ) ? "image/tiff"
-		     : (n&0xFFFF = 0x4D4D    ) ? "image/tiff"
-		     : "application/octet-stream"
-	}
+    RandomBoundary() {
+        str := "0|1|2|3|4|5|6|7|8|9|a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z"
+        Sort, str, D| Random
+        str := StrReplace(str, "|")
+        Return SubStr(str, 1, 12)
+    }
+
+    MimeType(FileName) {
+        n := FileOpen(FileName, "r").ReadUInt()
+        Return (n = 0x474E5089) ? "image/png"
+        : (n = 0x38464947) ? "image/gif"
+        : (n&0xFFFF = 0x4D42 ) ? "image/bmp"
+        : (n&0xFFFF = 0xD8FF ) ? "image/jpeg"
+        : (n&0xFFFF = 0x4949 ) ? "image/tiff"
+        : (n&0xFFFF = 0x4D4D ) ? "image/tiff"
+        : "application/octet-stream"
+    }
 
 }
 
@@ -277,7 +279,7 @@ webhookPost(data := 0){
 		}
 		)"
 
-    if (!data.embedContent || data.noEmbed)
+    if ((!data.embedContent && !data.embedTitle) || data.noEmbed)
         payload_json := RegExReplace(payload_json, ",.*""embeds.*}]", "")
     
 
@@ -298,6 +300,25 @@ webhookPost(data := 0){
     WebRequest.SetRequestHeader("If-Modified-Since", "Sat, 1 Jan 2000 00:00:00 GMT")
     WebRequest.Send(postdata)
     WebRequest.WaitForResponse()
+}
+
+determineBiome(){
+    m := Gdip_CreateBitmapFromFile(imageDir . "starfallTest.png")
+    retrievedMap := Gdip_ResizeBitmap(m,300,200,1)
+    effect := Gdip_CreateEffect(3,"1|0|0|0|0" . "|" . "0|2|0|0|0" . "|" . "0|0|1|0|0" . "|" . "0|0|0|1|0" . "|" . "0|0|0.2|0|1",0)
+    effect2 := Gdip_CreateEffect(5,20,40)
+    effect3 := Gdip_CreateEffect(2,10,30)
+    Gdip_BitmapApplyEffect(retrievedMap,effect)
+    Gdip_BitmapApplyEffect(retrievedMap,effect2)
+    Gdip_BitmapApplyEffect(retrievedMap,effect3)
+
+    OutputDebug, % ocrFromBitmap(retrievedMap)
+
+    Gdip_DisposeEffect(effect)
+    Gdip_DisposeEffect(effect2)
+    Gdip_DisposeEffect(effect3)
+    Gdip_DisposeBitmap(retrievedMap)
+    Gdip_DisposeBitmap(m)
 }
 
 getAuraInfo(starColor := 0, is100k := 0, is1m := 0){
@@ -338,7 +359,17 @@ getAuraInfo(starColor := 0, is100k := 0, is1m := 0){
     }
 }
 
-rollDetection(bypass := 0,is1m := 0){
+handleRollPost(bypass,auraInfo,starMap){
+    Gdip_SaveBitmapToFile(starMap,ssPath)
+    Gdip_DisposeBitmap(starMap)
+    if (auraInfo && sendMinimum && sendMinimum <= auraInfo.rarity){
+        webhookPost({embedContent: "# You rolled " auraInfo.name "!\n> ### 1/" commaFormat(auraInfo.rarity) " Chance",embedTitle: "Roll",embedColor: auraInfo.color,embedImage: auraImages ? auraInfo.image : 0,embedFooter: "Detected color " bypass,pings: (pingMinimum && pingMinimum <= auraInfo.rarity),files:[ssPath],embedThumbnail:"attachment://ss.jpg"})
+    } else if (!auraInfo) {
+        webhookPost({embedContent: "Unknown roll color: " bypass,embedTitle: "Roll?",embedColor: bypass,files:[ssPath],embedThumbnail:"attachment://ss.jpg"})
+    }
+}
+
+rollDetection(bypass := 0,is1m := 0,starMap := 0){
     if (rareDisplaying && !bypass) {
         return
     }
@@ -376,6 +407,12 @@ rollDetection(bypass := 0,is1m := 0){
                 return
             }
 
+            topLeft := getFromUV(-0.2,-0.2,rX,rY,width,height)
+            bottomRight := getFromUV(0.2,0.2,rX,rY,width,height)
+            squareScale := [bottomRight[1]-topLeft[1]+1,bottomRight[2]-topLeft[2]+1]
+
+            starMap := Gdip_BitmapFromScreen(topLeft[1] "|" topLeft[2] "|" squareScale[1] "|" squareScale[2])
+
             tData1mCheck := getAuraInfo(cColor,0,1)
             if (tData1mCheck && tData1mCheck.rarity < 1000000){
                 tData1mCheck := 0
@@ -383,16 +420,12 @@ rollDetection(bypass := 0,is1m := 0){
             if (tData1mCheck){
                 start := A_TickCount
 
-                topLeft := getFromUV(-0.15,-0.15,rX,rY,width,height)
-                bottomRight := getFromUV(0.15,0.15,rX,rY,width,height)
-                squareScale := [bottomRight[1]-topLeft[1]+1,bottomRight[2]-topLeft[2]+1]
                 totalPixels := 32*32
-
-                retrievedMap := Gdip_BitmapFromScreen(topLeft[1] "|" topLeft[2] "|" squareScale[1] "|" squareScale[2])
-                starMap := Gdip_ResizeBitmap(retrievedMap,32,32,0)
+                
+                starCheckMap := Gdip_ResizeBitmap(starMap,32,32,0)
 
                 effect := Gdip_CreateEffect(5,-30,60)
-                Gdip_BitmapApplyEffect(starMap,effect)
+                Gdip_BitmapApplyEffect(starCheckMap,effect)
 
                 starPixels := 0
                 Loop, % 50 {
@@ -400,7 +433,7 @@ rollDetection(bypass := 0,is1m := 0){
                     Loop, % 50 {
                         y := A_Index - 1
 
-                        pixelColor := Gdip_GetPixel(starMap, x, y)
+                        pixelColor := Gdip_GetPixel(starCheckMap, x, y)
 
                         if (compareColors(pixelColor,0x000000) > 32) {
                             starPixels += 1
@@ -408,15 +441,15 @@ rollDetection(bypass := 0,is1m := 0){
                     }
                 }
 
-                is1m := starPixels/totalPixels >= 0.24
+                is1m := starPixels/totalPixels >= 0.13
 
                 Gdip_DisposeEffect(effect)
-                Gdip_DisposeBitmap(starMap)
+                Gdip_DisposeBitmap(starCheckMap)
                 Gdip_DisposeBitmap(retrievedMap)
             }
             
             Sleep, 8000
-            rollDetection(cColor,is1m)
+            rollDetection(cColor,is1m,starMap)
         } else {
             if (sendMinimum && sendMinimum < 10000) {
                 webhookPost({embedContent:"You rolled a 1/1k+",embedTitle:"Roll",pings: (pingMinimum && pingMinimum < 10000)})
@@ -448,11 +481,7 @@ rollDetection(bypass := 0,is1m := 0){
     if (is100k && rareDisplaying >= 2){
         rareDisplaying := 3
         auraInfo := getAuraInfo(bypass,1)
-        if (auraInfo && sendMinimum && sendMinimum <= auraInfo.rarity){
-            webhookPost({embedContent: "# You rolled " auraInfo.name "!\n> ### 1/" commaFormat(auraInfo.rarity) " Chance",embedTitle: "Roll",embedColor: auraInfo.color,embedImage: auraImages ? auraInfo.image : 0,embedFooter: "Detected color " bypass,pings: (pingMinimum && pingMinimum <= auraInfo.rarity)})
-        } else if (!auraInfo) {
-            webhookPost({embedContent: "Unknown roll color: " bypass,embedTitle: "Roll?",embedColor: bypass})
-        }
+        handleRollPost(bypass,auraInfo,starMap)
         Sleep, 6000
         rareDisplaying := 0
     } else if (rareDisplaying >= 2){
@@ -461,11 +490,7 @@ rollDetection(bypass := 0,is1m := 0){
             rareDisplaying := 0
             return
         }
-        if (auraInfo && sendMinimum && sendMinimum <= auraInfo.rarity){
-            webhookPost({embedContent: "# You rolled " auraInfo.name "!\n> ### 1/" commaFormat(auraInfo.rarity) " Chance",embedTitle: "Roll",embedColor: auraInfo.color,embedImage: auraImages ? auraInfo.image : 0,embedFooter: "Detected color " bypass,pings: (pingMinimum && pingMinimum <= auraInfo.rarity)})
-        } else if (!auraInfo) {
-            webhookPost({embedContent: "Unknown roll color: " bypass,embedTitle: "Roll?",embedColor: bypass})
-        }
+        handleRollPost(bypass,auraInfo,starMap)
         rareDisplaying := 0
     }
 }
