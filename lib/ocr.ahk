@@ -87,8 +87,9 @@ ocr(file, lang := "FirstFromAvailableLanguages")
       }
       if (OcrEngine = 0)
       {
-         msgbox Can not use language "%lang%" for OCR, please install language pack.
-         ExitApp
+         ; msgbox Can not use language "%lang%" for OCR, please install language pack.
+         ; ExitApp
+         return
       }
       CurrentLanguage := lang
    }
@@ -100,8 +101,9 @@ ocr(file, lang := "FirstFromAvailableLanguages")
    DllCall(NumGet(NumGet(BitmapFrame+0)+13*A_PtrSize), "ptr", BitmapFrame, "uint*", height)   ; get_PixelHeight
    if (width > MaxDimension) or (height > MaxDimension)
    {
-      msgbox Image is to big - %width%x%height%.`nIt should be maximum - %MaxDimension% pixels
-      ExitApp
+      ; msgbox Image is to big - %width%x%height%.`nIt should be maximum - %MaxDimension% pixels
+      ; ExitApp
+      return
    }
    BitmapFrameWithSoftwareBitmap := ComObjQuery(BitmapDecoder, IBitmapFrameWithSoftwareBitmap := "{FE287C9A-420C-4963-87AD-691436E08383}")
    DllCall(NumGet(NumGet(BitmapFrameWithSoftwareBitmap+0)+6*A_PtrSize), "ptr", BitmapFrameWithSoftwareBitmap, "ptr*", SoftwareBitmap)   ; GetSoftwareBitmapAsync
@@ -142,13 +144,14 @@ CreateClass(string, interface, ByRef Class)
    result := DllCall("Combase.dll\RoGetActivationFactory", "ptr", hString, "ptr", &GUID, "ptr*", Class)
    if (result != 0)
    {
+      return
       if (result = 0x80004002)
          msgbox No such interface supported
       else if (result = 0x80040154)
          msgbox Class not registered
       else
          msgbox error: %result%
-      ExitApp
+      ; ExitApp
    }
    DeleteHString(hString)
 }
@@ -174,8 +177,9 @@ WaitForAsync(ByRef Object)
          if (status != 1)
          {
             DllCall(NumGet(NumGet(AsyncInfo+0)+8*A_PtrSize), "ptr", AsyncInfo, "uint*", ErrorCode)   ; IAsyncInfo.ErrorCode
-            msgbox AsyncInfo status error: %ErrorCode%
-            ExitApp
+            ;msgbox AsyncInfo status error: %ErrorCode%
+            ;ExitApp
+            return
          }
          ObjRelease(AsyncInfo)
          break
@@ -187,11 +191,14 @@ WaitForAsync(ByRef Object)
    Object := ObjectResult
 }
 
-ocrFromBitmap(ByRef pbm){ ; removes pbm too
+ocrFromBitmap(pbm){
    hBM := Gdip_CreateHBITMAPFromBitmap(pbm)
    ;Gdip_SaveBitmapToFile(pBMNew, i A_Index ".png")
-   Gdip_DisposeImage(pbm)
    pIRandomAccessStream := HBitmapToRandomAccessStream(hBM)
    DllCall("DeleteObject", "Ptr", hBM)
-   return ocr(pIRandomAccessStream,"en")
+   result := ""
+   try {
+      result := ocr(pIRandomAccessStream,"en-us")
+   }
+   return result
 }

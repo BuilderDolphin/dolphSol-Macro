@@ -29,7 +29,7 @@ if (RegExMatch(A_ScriptDir,"\.zip")){
 
 Gdip_Startup()
 
-global version := "v1.3.4"
+global version := "v1.3.5"
 
 global robloxId := 0
 
@@ -618,7 +618,7 @@ runPath(pathName,voidPoints,noCenter = 0){
         pathsRunning.Push(targetDir)
         
         DetectHiddenWindows, On
-        Run, % targetDir
+        Run, % """" . A_AhkPath . """ """ . targetDir . """"
 
         stopped := 0
 
@@ -652,7 +652,9 @@ runPath(pathName,voidPoints,noCenter = 0){
                 PixelGetColor, pColor, % point[1], % point[2], RGB
                 blackCorners += compareColors(pColor,0x000000) < 8
             }
-            if (blackCorners == 3){
+            PixelGetColor, pColor, % rX+width*0.5, % rY+height*0.5, RGB
+            centerBlack := compareColors(pColor,0x000000) < 8
+            if (blackCorners = 3 && centerBlack){
                 if (!voidCooldown){
                     voidCooldown := 5
                     expectedVoids -= 1
@@ -974,16 +976,17 @@ GetRobloxHWND()
 		return 0
 }
 
-getRobloxPos(ByRef x := "", ByRef y := "", ByRef width := "", ByRef height := ""){
-    rHwnd := GetRobloxHWND()
-    WinGetPos, x, y, width, height, ahk_id %rHwnd%
+getRobloxPos(ByRef x := "", ByRef y := "", ByRef width := "", ByRef height := "", hwnd := ""){
+    if !hwnd
+        hwnd := GetRobloxHWND()
+    VarSetCapacity( buf, 16, 0 )
+    DllCall( "GetClientRect" , "UPtr", hwnd, "ptr", &buf)
+    DllCall( "ClientToScreen" , "UPtr", hwnd, "ptr", &buf)
 
-    if (!isFullscreen()){
-        height -= 39
-        width -= 16
-        x += 8
-        y += 31
-    }
+    x := NumGet(&buf,0,"Int")
+    y := NumGet(&buf,4,"Int")
+    width := NumGet(&buf,8,"Int")
+    height := NumGet(&buf,12,"Int")
 }
 
 
@@ -1082,7 +1085,7 @@ getMenuButtonPosition(num, ByRef posX := "", ByRef posY := ""){ ; num is 1-7, 1 
     menuBarVSpacing := 10.5*(height/1080)
     menuBarButtonSize := 58*(width/1920)
     menuEdgeCenter := [rX + menuBarOffset, rY + (height/2)]
-    startPos := [menuEdgeCenter[1]+(menuBarButtonSize/2),menuEdgeCenter[2]+(menuBarButtonSize/4)-(menuBarButtonSize+menuBarVSpacing-1)*3.5] ; 3 to 4 because easter
+    startPos := [menuEdgeCenter[1]+(menuBarButtonSize/2),menuEdgeCenter[2]+(menuBarButtonSize/4)-(menuBarButtonSize+menuBarVSpacing-1)*3] ; final factor = 0.5x (x is number of menu buttons visible to all, so exclude private server button)
     
     posX := startPos[1]
     posY := startPos[2] + (menuBarButtonSize+menuBarVSpacing)*(num-1)
@@ -1175,6 +1178,9 @@ clickCraftingSlot(num,isPotionSlot := 0){
     fittingSlots := Floor(scrollerHeight/slotHeight) + (Mod(scrollerHeight, slotHeight) > height*0.045)
     if (fittingSlots < num){
         rCount := num-fittingSlots
+        if (num = 13 && !isPotionSlot){
+            rCount += 5
+        }
         Loop %rCount% {
             Click, WheelDown
             Sleep, 200
@@ -1339,12 +1345,20 @@ screenshotInventories(){ ; from all closed
 
     waitForInvVisible()
 
+    itemButton := getPositionFromAspectRatioUV(0.564405, -0.451327, storageAspectRatio)
+    MouseMove, % itemButton[1], % itemButton[2]
+    Sleep, 200
+    MouseClick
+    Sleep, 200
+
     ssMap := Gdip_BitmapFromScreen(topLeft[1] "|" topLeft[2] "|" totalSize[1] "|" totalSize[2])
     Gdip_SaveBitmapToFile(ssMap,ssPath)
     Gdip_DisposeBitmap(ssMap)
     try webhookPost({files:[ssPath],embedImage:"attachment://ss.jpg",embedTitle: "Item Inventory Screenshot"})
 
-    MouseClick
+    Sleep, 200
+    clickMenuButton(3)
+    Sleep, 200
 }
 
 checkBottomLeft(){
@@ -1954,6 +1968,8 @@ handleImportSettings(){
             MsgBox, 0,Import Settings Error, % "Cannot import settings from the current macro!"
         }
     }
+
+    importingSettings := 0
 }
 
 handleWebhookEnableToggle(){
@@ -2137,7 +2153,7 @@ startMacro(){
     Gui, mainUI:+LastFoundExist
     WinSetTitle, % "dolphSol Macro " version " (Running)"
 
-    Run, % mainDir . "lib\status.ahk"
+    Run, % """" . A_AhkPath . """ """ mainDir . "lib\status.ahk"""
 
     if (options.StatusBarEnabled){
         Gui statusBar:Show, % "w220 h25 x" (A_ScreenWidth-300) " y50", dolphSol Status
@@ -2247,6 +2263,9 @@ Supporters (Donations)
 - @Ami.n
 - @s.a.t.s
 - @UnamedWasp - Member
+- @JujuFRFX
+- @Xon67
+- @NightLT98 - Member
 
 Thank you to everyone who currently supports and uses the macro! You guys are amazing!
 )

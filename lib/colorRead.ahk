@@ -18,15 +18,30 @@ isFullscreen() {
 	return (w = A_ScreenWidth && h = A_ScreenHeight)
 }
 
-getRobloxPos(ByRef x := "", ByRef y := "", ByRef width := "", ByRef height := ""){
-    WinGetPos, x, y, width, height, Roblox
+GetRobloxHWND()
+{
+	if (hwnd := WinExist("Roblox ahk_exe RobloxPlayerBeta.exe"))
+		return hwnd
+	else if (WinExist("Roblox ahk_exe ApplicationFrameHost.exe"))
+	{
+		ControlGet, hwnd, Hwnd, , ApplicationFrameInputSinkWindow1
+		return hwnd
+	}
+	else
+		return 0
+}
 
-    if (!isFullscreen()){
-        height -= 39
-        width -= 16
-        x += 8
-        y += 31
-    }
+getRobloxPos(ByRef x := "", ByRef y := "", ByRef width := "", ByRef height := "", hwnd := ""){
+    if !hwnd
+        hwnd := GetRobloxHWND()
+    VarSetCapacity( buf, 16, 0 )
+    DllCall( "GetClientRect" , "UPtr", hwnd, "ptr", &buf)
+    DllCall( "ClientToScreen" , "UPtr", hwnd, "ptr", &buf)
+
+    x := NumGet(&buf,0,"Int")
+    y := NumGet(&buf,4,"Int")
+    width := NumGet(&buf,8,"Int")
+    height := NumGet(&buf,12,"Int")
 }
 
 global currentText := ""

@@ -27,6 +27,18 @@ global auraImages := 0
 
 global rareDisplaying := 0
 
+global currentBiome := "Normal"
+global currentBiomeTimer := 0
+global currentBiomeDisplayed := 0
+
+global biomeData := {"Normal":{color: 0xdddddd}
+    ,"Windy":{color: 0x9ae5ff, duration: 120}
+    ,"Rainy":{color: 0x027cbd, duration: 120}
+    ,"Snowy":{color: 0xDceff9, duration: 120}
+    ,"Starfall":{color: 0x011ab7, duration: 600, display: 1}
+    ,"Null":{color: 0x838383, duration: 90, display: 1}
+    ,"Glitched":{color: 0xbfff00, duration: 164, display: 1}}
+
 FileRead, retrieved, %configPath%
 
 if (!ErrorLevel){
@@ -44,21 +56,41 @@ if (!ErrorLevel){
     return
 }
 
+getUnixTime(){
+    now := A_NowUTC
+    EnvSub, now,1970, seconds
+    return now
+}
 
 isFullscreen() {
 	WinGetPos,,, w, h, Roblox
 	return (w = A_ScreenWidth && h = A_ScreenHeight)
 }
 
-getRobloxPos(ByRef x := "", ByRef y := "", ByRef width := "", ByRef height := ""){
-    WinGetPos, x, y, width, height, Roblox
+GetRobloxHWND()
+{
+	if (hwnd := WinExist("Roblox ahk_exe RobloxPlayerBeta.exe"))
+		return hwnd
+	else if (WinExist("Roblox ahk_exe ApplicationFrameHost.exe"))
+	{
+		ControlGet, hwnd, Hwnd, , ApplicationFrameInputSinkWindow1
+		return hwnd
+	}
+	else
+		return 0
+}
 
-    if (!isFullscreen()){
-        height -= 39
-        width -= 16
-        x += 8
-        y += 31
-    }
+getRobloxPos(ByRef x := "", ByRef y := "", ByRef width := "", ByRef height := "", hwnd := ""){
+    if !hwnd
+        hwnd := GetRobloxHWND()
+    VarSetCapacity( buf, 16, 0 )
+    DllCall( "GetClientRect" , "UPtr", hwnd, "ptr", &buf)
+    DllCall( "ClientToScreen" , "UPtr", hwnd, "ptr", &buf)
+
+    x := NumGet(&buf,0,"Int")
+    y := NumGet(&buf,4,"Int")
+    width := NumGet(&buf,8,"Int")
+    height := NumGet(&buf,12,"Int")
 }
 
 getUV(x,y,oX,oY,width,height){
@@ -259,6 +291,10 @@ webhookPost(data := 0){
 
     url := webhookURL
 
+    if (!url){
+        ExitApp
+    }
+
     if (data.pings){
         data.content := data.content ? data.content " <@" discordID ">" : "<@" discordID ">"
     }
@@ -302,23 +338,107 @@ webhookPost(data := 0){
     WebRequest.WaitForResponse()
 }
 
-determineBiome(){
-    m := Gdip_CreateBitmapFromFile(imageDir . "starfallTest.png")
-    retrievedMap := Gdip_ResizeBitmap(m,300,200,1)
-    effect := Gdip_CreateEffect(3,"1|0|0|0|0" . "|" . "0|2|0|0|0" . "|" . "0|0|1|0|0" . "|" . "0|0|0|1|0" . "|" . "0|0|0.2|0|1",0)
-    effect2 := Gdip_CreateEffect(5,20,40)
-    effect3 := Gdip_CreateEffect(2,10,30)
-    Gdip_BitmapApplyEffect(retrievedMap,effect)
-    Gdip_BitmapApplyEffect(retrievedMap,effect2)
-    Gdip_BitmapApplyEffect(retrievedMap,effect3)
+global similarCharacters := {"1":"l"
+    ,"n":"m"
+    ,"m":"n"
+    ,"t":"f"
+    ,"f":"t"
+    ,"s":"S"
+    ,"S":"s"
+    ,"w":"W"
+    ,"W":"w"}
 
-    OutputDebug, % ocrFromBitmap(retrievedMap)
+identifyBiome(inputStr){
+    if (!inputStr)
+        return 0
+    
+    internalStr := RegExReplace(inputStr,"\s")
+    internalStr := RegExReplace(internalStr,"^([\[\(\{\|IJ]+)")
+    internalStr := RegExReplace(internalStr,"([\]\)\}\|IJ]+)$")
+
+    highestRatio := 0
+    matchingBiome := ""
+
+    for v,_ in biomeData {
+        if (v = "Glitched"){
+            continue
+        }
+        scanIndex := 1
+        accuracy := 0
+        Loop % StrLen(v) {
+            checkingChar := SubStr(v,A_Index,1)
+            Loop % StrLen(internalStr) - scanIndex + 1 {
+                index := scanIndex + A_Index - 1
+                targetChar := SubStr(internalStr, index, 1)
+                if (targetChar = checkingChar){
+                    accuracy += 3 - A_Index
+                    scanIndex := index+1
+                    break
+                } else if (similarCharacters[targetChar] = checkingChar){
+                    accuracy += 2.5 - A_Index
+                    scanIndex := index+1
+                    break
+                }
+            }
+        }
+        ratio := accuracy/(StrLen(v)*2)
+        if (ratio > highestRatio){
+            matchingBiome := v
+            highestRatio := ratio
+        }
+    }
+
+    if (highestRatio < 0.70){
+        matchingBiome := 0
+        glitchedCheck := StrLen(internalStr)-StrLen(RegExReplace(internalStr,"\d")) + (RegExMatch(internalStr,"\.") ? 4 : 0)
+        if (glitchedCheck >= 20){
+            OutputDebug, % "glitched biome pro!"
+            matchingBiome := "Glitched"
+        }
+    }
+
+
+    return matchingBiome
+}
+
+determineBiome(){
+    if (!WinActive("ahk_id " GetRobloxHWND()) && !WinActive("Roblox")){
+        return
+    }
+    getRobloxPos(rX,rY,width,height)
+    pBM := Gdip_BitmapFromScreen(rX "|" rY + height - height*0.102 + ((height/600) - 1)*10 "|" width*0.15 "|" height*0.03)
+
+    effect := Gdip_CreateEffect(3,"2|0|0|0|0" . "|" . "0|1.5|0|0|0" . "|" . "0|0|1|0|0" . "|" . "0|0|0|1|0" . "|" . "0|0|0.2|0|1",0)
+    effect2 := Gdip_CreateEffect(5,-100,250)
+    effect3 := Gdip_CreateEffect(2,10,50)
+    Gdip_BitmapApplyEffect(pBM,effect)
+    Gdip_BitmapApplyEffect(pBM,effect2)
+    Gdip_BitmapApplyEffect(pBM,effect3)
+
+    identifiedBiome := 0
+    Loop 10 {
+        st := A_TickCount
+        newSizedPBM := Gdip_ResizeBitmap(pBM,300+(A_Index*38),70+(A_Index*7.5),1,2)
+
+        ocrResult := ocrFromBitmap(newSizedPBM)
+        identifiedBiome := identifyBiome(ocrResult)
+
+        Gdip_DisposeBitmap(newSizedPBM)
+
+        if (identifiedBiome){
+            break
+        }
+    }
 
     Gdip_DisposeEffect(effect)
     Gdip_DisposeEffect(effect2)
     Gdip_DisposeEffect(effect3)
     Gdip_DisposeBitmap(retrievedMap)
-    Gdip_DisposeBitmap(m)
+    Gdip_DisposeBitmap(pBM)
+
+    DllCall("psapi.dll\EmptyWorkingSet", "ptr", -1)
+
+    return identifiedBiome
 }
 
 getAuraInfo(starColor := 0, is100k := 0, is1m := 0){
@@ -373,7 +493,7 @@ rollDetection(bypass := 0,is1m := 0,starMap := 0){
     if (rareDisplaying && !bypass) {
         return
     }
-    if (WinActive("Roblox") != WinExist("Roblox")){
+    if (!GetRobloxHWND()){
         rareDisplaying := 0
         return
     }
@@ -495,9 +615,42 @@ rollDetection(bypass := 0,is1m := 0,starMap := 0){
     }
 }
 
+secondTick(){
+    biomeFinished := 0
+    if (currentBiomeTimer - getUnixTime() < 1 && currentBiome != "Normal"){
+        biomeFinished := 1
+    }
+    rollDetection()
+
+    if ((!rareDisplaying && currentBiome = "Normal") || biomeFinished){
+        FormatTime, fTime, , HH:mm:ss
+        if (biomeFinished && currentBiomeDisplayed){
+            currentBiomeDisplayed := 0
+            webhookPost({embedContent: "[" fTime "]: Rare Biome Ended - " currentBiome})
+            currentBiome := "Normal"
+        }
+
+        detectedBiome := determineBiome()
+
+        if (detectedBiome){
+            currentBiome := detectedBiome
+            targetData := biomeData[currentBiome]
+            if (currentBiome != "Normal" && targetData){
+                if (targetData.display){
+                    currentBiomeDisplayed := 1
+
+                    webhookPost({embedContent: "[" fTime "]: Rare Biome Started - " currentBiome,embedColor: targetData.color})
+                }
+
+                currentBiomeTimer := getUnixTime() + targetData.duration
+            }
+        }
+    }
+}
+
 SetTimer, secondTimer, 1000
 
 return
 
 secondTimer:
-rollDetection()
+secondTick()

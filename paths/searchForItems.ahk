@@ -9,9 +9,7 @@ CoordMode, Mouse, Screen
 
 if (options.ArcanePath){
     send {d Down}
-    walkSleep(1300)
-    jump()
-    walkSleep(1200)
+    walkSleep(2600)
     send {s down}
     Send {d Up}
     walkSleep(700)
@@ -154,9 +152,7 @@ if (options.ArcanePath){
     collect(7)
 }else{
     Send {d Down}
-    walkSleep(1300)
-    jump()
-    walkSleep(1200)
+    walkSleep(2600)
     Send {s Down}
     Send {d Up}
     walkSleep(700)
