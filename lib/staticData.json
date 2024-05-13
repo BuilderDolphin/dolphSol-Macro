@@ -1,5 +1,5 @@
 [{
-    "announcement":"Please note that in this pre-version, the Obby function does not work currently.",
+    "announcement":"Please note that in this pre-version, the Obby function does not work currently. Make sure your camera mode is on Default (Classic) before starting the macro!",
     "updateInfo": {
         "latestVersion":"v1.4 pre",
         "versionLink":"https://github.com/BuilderDolphin/dolphSol-Macro/releases/latest",
