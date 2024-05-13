@@ -7,6 +7,7 @@ CoordMode, Mouse, Screen
 
 #Include, GDIP_All.ahk
 #Include, ocr.ahk
+#Include, jxon.ahk
 
 Gdip_Startup()
 
@@ -35,7 +36,9 @@ global biomeData := {"Normal":{color: 0xdddddd}
     ,"Windy":{color: 0x9ae5ff, duration: 120}
     ,"Rainy":{color: 0x027cbd, duration: 120}
     ,"Snowy":{color: 0xDceff9, duration: 120}
+    ,"Hell":{color: 0xff4719, duration: 660, display: 1}
     ,"Starfall":{color: 0x011ab7, duration: 600, display: 1}
+    ,"Corruption":{color: 0x6d32a8, duration: 660, display: 1}
     ,"Null":{color: 0x838383, duration: 90, display: 1}
     ,"Glitched":{color: 0xbfff00, duration: 164, display: 1}}
 
@@ -196,7 +199,8 @@ commaFormat(num){
     return final
 }
 
-global staticData := getINIData("staticData.ini")
+FileRead, staticDataContent, % "staticData.json"
+global staticData := Jxon_Load(staticDataContent)[1]
 
 ; CreateFormData() by tmplinshi, AHK Topic: https://autohotkey.com/boards/viewtopic.php?t=7647
 ; Thanks to Coco: https://autohotkey.com/boards/viewtopic.php?p=41731#p41731
@@ -441,30 +445,41 @@ determineBiome(){
     return identifiedBiome
 }
 
-getAuraInfo(starColor := 0, is100k := 0, is1m := 0){
-    tName := staticData["name" starColor]
-    if (tName){
-        tImage := ""
-        tRarity := 0
-        if (staticData["nameMutation100k" starColor] && is100k){
-            tName := staticData["nameMutation100k" starColor]
-            tImage := staticData["imageMutation100k" starColor]
-            tRarity := staticData["rarityMutation100k" starColor]
-        } else if (staticData["nameMutation1m" starColor] && is1m && !is100k){
-            tName := staticData["nameMutation1m" starColor]
-            tImage := staticData["imageMutation1m" starColor]
-            tRarity := staticData["rarityMutation1m" starColor]
-        } else {
-            tImage := staticData["image" starColor]
-            tRarity := staticData["rarity" starColor]
+getAuraInfo(starColor := 0, cornerColor := 0, is100k := 0, is1m := 0){
+    tData := staticData.stars[starColor]
+    if (tData && (tData.cornerColor ? (compareColors(cornerColor,tData.cornerColor) <= 16) : 1)){
+        if (tData.mutations){
+            for i,v in tData.mutations {
+                if (v.cornerColor && (compareColors(cornerColor,v.cornerColor) > 16)){
+                    continue
+                }
+                if (v.requirements.is100k && is100k){
+                    tData := v
+                    break
+                }
+                if (v.requirements.is1m && is1m){
+                    tData := v
+                    break
+                }
+            }
         }
-        return {name:tName,image:tImage,rarity:tRarity,color:starColor}
+
+        displayName := tData.name
+        displayRarity := tData.rarity
+
+        if (tData.biome){
+            if (tData.biome.name = currentBiome){
+                displayName .= " [From " currentBiome "]"
+                displayRarity := Floor(displayRarity/tData.biome.factor)
+            }
+        }
+
+        return {name:displayName,image:tData.image,rarity:displayRarity,color:starColor}
     } else {
         lowestCompNum := 0xffffff * 3
         targetColor := 0
-        for i,v in staticData {
-            RegExMatch(i, "(?<=name)(\d+)",targetId)
-            if (targetId){
+        for targetId,v in staticData.stars {
+            if (targetId && (v.cornerColor ? (compareColors(cornerColor,v.cornerColor) <= 16) : 1)){
                 comp := compareColors(starColor,targetId)
                 if (comp < lowestCompNum){
                     lowestCompNum := comp
@@ -475,21 +490,60 @@ getAuraInfo(starColor := 0, is100k := 0, is1m := 0){
         if (lowestCompNum > 32){
             return 0
         }
-        return getAuraInfo(targetColor,is100k,is1m)
+        return getAuraInfo(targetColor,cornerColor,is100k,is1m)
     }
 }
 
-handleRollPost(bypass,auraInfo,starMap){
+global pi := 4*ATan(1)
+
+; not in use
+determine1mStar(ByRef starMap){
+    totalPixels := 32*32
+                
+    starCheckMap := Gdip_ResizeBitmap(starMap,32,32,0,2)
+
+    effect := Gdip_CreateEffect(5,30,150)
+    Gdip_BitmapApplyEffect(starCheckMap,effect)
+
+    starPixels := 0
+    Loop, % 32 {
+        x := A_Index - 1
+        Loop, % 32 {
+            y := A_Index - 1
+
+            pixelColor := Gdip_GetPixel(starCheckMap, x, y)
+
+            if (compareColors(pixelColor,0x000000) > 32) {
+                starPixels += 1
+            }
+        }
+    }
+
+    Gdip_DisposeEffect(effect)
+    Gdip_DisposeBitmap(starCheckMap)
+    Gdip_DisposeBitmap(retrievedMap)
+
+    return starPixels/totalPixels >= 0.13
+}
+
+handleRollPost(bypass,auraInfo,starMap,originalCorners){
     Gdip_SaveBitmapToFile(starMap,ssPath)
     Gdip_DisposeBitmap(starMap)
     if (auraInfo && sendMinimum && sendMinimum <= auraInfo.rarity){
-        webhookPost({embedContent: "# You rolled " auraInfo.name "!\n> ### 1/" commaFormat(auraInfo.rarity) " Chance",embedTitle: "Roll",embedColor: auraInfo.color,embedImage: auraImages ? auraInfo.image : 0,embedFooter: "Detected color " bypass,pings: (pingMinimum && pingMinimum <= auraInfo.rarity),files:[ssPath],embedThumbnail:"attachment://ss.jpg"})
+        webhookPost({embedContent: "# You rolled " auraInfo.name "!\n> ### 1/" commaFormat(auraInfo.rarity) " Chance",embedTitle: "Roll",embedColor: auraInfo.color,embedImage: auraImages ? auraInfo.image : 0,embedFooter: "Detected color " . bypass . (!isColorBlack(originalCorners[4]) ? " | Corner color: " . originalCorners[4] : "") ,pings: (pingMinimum && pingMinimum <= auraInfo.rarity),files:[ssPath],embedThumbnail:"attachment://ss.jpg"})
     } else if (!auraInfo) {
         webhookPost({embedContent: "Unknown roll color: " bypass,embedTitle: "Roll?",embedColor: bypass,files:[ssPath],embedThumbnail:"attachment://ss.jpg"})
     }
 }
 
-rollDetection(bypass := 0,is1m := 0,starMap := 0){
+isColorBlack(c){
+    return compareColors(c,0x000000) < 8
+}
+isColorWhite(c){
+    return compareColors(c,0xffffff) < 8
+}
+
+rollDetection(bypass := 0,is1m := 0,starMap := 0,originalCorners := 0){
     if (rareDisplaying && !bypass) {
         return
     }
@@ -502,17 +556,24 @@ rollDetection(bypass := 0,is1m := 0,starMap := 0){
     scanPoints := [[rX+1,rY+1],[rX+width-2,rY+1],[rX+1,rY+height-2],[rX+width-2,rY+height-2]]
     blackCorners := 0
     whiteCorners := 0
+    cornerResults := []
     for i,point in scanPoints {
         PixelGetColor, pColor, % point[1], % point[2], RGB
-        blackCorners += compareColors(pColor,0x000000) < 8
-        whiteCorners += compareColors(pColor,0xFFFFFF) < 8
+        blackCorners += isColorBlack(pColor)
+        whiteCorners += isColorWhite(pColor)
+
+        cornerResults[i] := pColor
     }
     PixelGetColor, cColor, % rX + width*0.5, % rY + height*0.5, RGB
-    centerColored := cColor > 16
+    centerColored := !isColorBlack(cColor)
+    possible1m := getAuraInfo(cColor,cornerResults[4],0,1)
 
-    if (blackCorners >= 4 && !bypass){
+    if (!bypass && (blackCorners >= 4 || (possible1m && isColorBlack(cornerResults[1]) && isColorBlack(cornerResults[2]) && !isColorWhite(cornerResults[4])))){
         rareDisplaying := 1
         if (centerColored){
+            if (possible1m && blackCorners < 4){
+                is1m := 1
+            }
             rareDisplaying := 2
             Sleep, 750
             blackCorners := 0
@@ -521,55 +582,20 @@ rollDetection(bypass := 0,is1m := 0,starMap := 0){
                 blackCorners += compareColors(pColor,0x000000) < 8
             }
             PixelGetColor, cColor, % rX + width*0.5, % rY + height*0.5, RGB
-            if (blackCorners < 4 || cColor <= 16){
+            if ((blackCorners < 4 && !getAuraInfo(cColor,cornerResults[4],0,1)) || isColorBlack(cColor)){
                 ; false detect
                 rareDisplaying := 0
                 return
             }
 
-            topLeft := getFromUV(-0.2,-0.2,rX,rY,width,height)
-            bottomRight := getFromUV(0.2,0.2,rX,rY,width,height)
+            topLeft := getFromUV(-0.25,-0.25,rX,rY,width,height)
+            bottomRight := getFromUV(0.25,0.25,rX,rY,width,height)
             squareScale := [bottomRight[1]-topLeft[1]+1,bottomRight[2]-topLeft[2]+1]
 
             starMap := Gdip_BitmapFromScreen(topLeft[1] "|" topLeft[2] "|" squareScale[1] "|" squareScale[2])
-
-            tData1mCheck := getAuraInfo(cColor,0,1)
-            if (tData1mCheck && tData1mCheck.rarity < 1000000){
-                tData1mCheck := 0
-            }
-            if (tData1mCheck){
-                start := A_TickCount
-
-                totalPixels := 32*32
-                
-                starCheckMap := Gdip_ResizeBitmap(starMap,32,32,0)
-
-                effect := Gdip_CreateEffect(5,-30,60)
-                Gdip_BitmapApplyEffect(starCheckMap,effect)
-
-                starPixels := 0
-                Loop, % 50 {
-                    x := A_Index - 1
-                    Loop, % 50 {
-                        y := A_Index - 1
-
-                        pixelColor := Gdip_GetPixel(starCheckMap, x, y)
-
-                        if (compareColors(pixelColor,0x000000) > 32) {
-                            starPixels += 1
-                        }
-                    }
-                }
-
-                is1m := starPixels/totalPixels >= 0.13
-
-                Gdip_DisposeEffect(effect)
-                Gdip_DisposeBitmap(starCheckMap)
-                Gdip_DisposeBitmap(retrievedMap)
-            }
             
             Sleep, 8000
-            rollDetection(cColor,is1m,starMap)
+            rollDetection(cColor,is1m,starMap,cornerResults)
         } else {
             if (sendMinimum && sendMinimum < 10000) {
                 webhookPost({embedContent:"You rolled a 1/1k+",embedTitle:"Roll",pings: (pingMinimum && pingMinimum < 10000)})
@@ -600,17 +626,17 @@ rollDetection(bypass := 0,is1m := 0,starMap := 0){
 
     if (is100k && rareDisplaying >= 2){
         rareDisplaying := 3
-        auraInfo := getAuraInfo(bypass,1)
-        handleRollPost(bypass,auraInfo,starMap)
+        auraInfo := getAuraInfo(bypass,0,1)
+        handleRollPost(bypass,auraInfo,starMap,originalCorners)
         Sleep, 6000
         rareDisplaying := 0
     } else if (rareDisplaying >= 2){
-        auraInfo := getAuraInfo(bypass,0,is1m)
+        auraInfo := getAuraInfo(bypass,originalCorners[4],0,is1m)
         if ((auraInfo.rarity >= 99999) && (auraInfo.rarity < 1000000)){
             rareDisplaying := 0
             return
         }
-        handleRollPost(bypass,auraInfo,starMap)
+        handleRollPost(bypass,auraInfo,starMap,originalCorners)
         rareDisplaying := 0
     }
 }
@@ -642,7 +668,7 @@ secondTick(){
                     webhookPost({embedContent: "[" fTime "]: Rare Biome Started - " currentBiome,embedColor: targetData.color})
                 }
 
-                currentBiomeTimer := getUnixTime() + targetData.duration
+                currentBiomeTimer := getUnixTime() + targetData.duration + 5
             }
         }
     }

@@ -41,17 +41,26 @@ walkSleep(d){
     Sleep, % getWalkTime(d)
 }
 
+global azertyReplace := {"w":"z","a":"q"}
+
+walkSend(k,t){
+    if (options.AzertyLayout && azertyReplace[k]){
+        k := azertyReplace[k]
+    }
+    Send, % "{" . k . (t ? " " . t : "") . "}"
+}
+
 press(k, duration := 50) {
-    Send, {%k% Down}
+    walkSend(k,"Down")
     walkSleep(duration)
-    Send, {%k% Up}
+    walkSend(k,"Up")
 }
 press2(k, k2, duration := 50) {
-    Send, {%k% Down}
-    Send, {%k2% Down}
+    walkSend(k,"Down")
+    walkSend(k2,"Down")
     walkSleep(duration)
-    Send, {%k% Up}
-    Send, {%k2% Up}
+    walkSend(k,"Up")
+    walkSend(k2,"Up")
 }
 
 reset() {
@@ -143,7 +152,7 @@ getMenuButtonPosition(num, ByRef posX := "", ByRef posY := ""){ ; num is 1-7, 1 
     menuBarVSpacing := 10.5*(height/1080)
     menuBarButtonSize := 58*(width/1920)
     menuEdgeCenter := [rX + menuBarOffset, rY + (height/2)]
-    startPos := [menuEdgeCenter[1]+(menuBarButtonSize/2),menuEdgeCenter[2]+(menuBarButtonSize/4)-(menuBarButtonSize+menuBarVSpacing-1)*3] ; final factor = 0.5x (x is number of menu buttons visible to all, so exclude private server button)
+    startPos := [menuEdgeCenter[1]+(menuBarButtonSize/2),menuEdgeCenter[2]+(menuBarButtonSize/4)-(menuBarButtonSize+menuBarVSpacing-1)*3.5] ; final factor = 0.5x (x is number of menu buttons visible to all, so exclude private server button)
     
     posX := startPos[1]
     posY := startPos[2] + (menuBarButtonSize+menuBarVSpacing)*(num-1)
@@ -158,17 +167,69 @@ clickMenuButton(num){
     MouseClick
 }
 
+rotateCameraMode(){
+    press("Esc")
+    Sleep, 250
+    press("Tab")
+    Sleep, 150
+    press("Down")
+    Sleep, 150
+    press("Right")
+    Sleep, 150
+    press("Right")
+    Sleep, 150
+    press("Esc")
+    Sleep, 250
+
+    camFollowMode := !camFollowMode
+}
+
 alignCamera(){
     closeChat()
     Sleep, 200
 
+    reset()
+    Sleep, 100
+
+    getRobloxPos(rX,rY,rW,rH)
+
+    rotateCameraMode()
+
     clickMenuButton(2)
     Sleep, 500
-    getRobloxPos(rX,rY,rW,rH)
+    
     MouseMove, % rX + rW*0.15, % rY + 44 + rH*0.05 + options.BackOffset
     Sleep, 200
     MouseClick
-    Sleep, 500
+    Sleep, 200
+
+    rotateCameraMode()
+
+    Sleep, 100
+
+    walkSend("w","Down")
+    walkSend("d","Down")
+    walkSleep(500)
+    jump()
+    walkSleep(400)
+    jump()
+    walkSleep(600)
+
+    walkSend("d","Up")
+    walkSend("a","Down")
+    walkSleep(1500)
+
+    walkSend("a","Up")
+    walkSend("w","Up")
+
+    rotateCameraMode()
+
+    Sleep, 1500
+
+    rotateCameraMode()
+
+    reset()
+    Sleep, 2000
 }
 
 global azertyReplace := {"w": "z", "a": "q"} 

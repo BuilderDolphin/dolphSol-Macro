@@ -26,10 +26,11 @@ if (RegExMatch(A_ScriptDir,"\.zip")){
 #Include ocr.ahk
 #Include Gdip_All.ahk
 #Include Gdip_ImageSearch.ahk
+#Include jxon.ahk
 
 Gdip_Startup()
 
-global version := "v1.3.5"
+global version := "v1.4 pre"
 
 global robloxId := 0
 
@@ -57,6 +58,8 @@ global ssPath := "ss.jpg"
 global pathDir := mainDir . "paths\"
 global imgDir := mainDir . "images\"
 
+global camFollowMode := 0
+
 configHeader := "; dolphSol Settings`n;   Do not put spaces between equals`n;   Additions may break this file and the macro overall, please be cautious`n;   If you mess up this file, clear it entirely and restart the macro`n`n[Options]`r`n"
 
 global potionIndex := {0:"None"
@@ -76,6 +79,7 @@ global craftingInfo := {"Gilded Coin":{slot:13,addSlots:1,maxes:[1],attempts:5,a
     ,"Fortune Potion III":{slot:1,subSlot:3,addSlots:5,maxes:[1,15,10,15,5],attempts:2}
     ,"Haste Potion I":{slot:2,subSlot:1,addSlots:4,maxes:[10,5,10,1],attempts:2}
     ,"Haste Potion II":{slot:2,subSlot:2,addSlots:5,maxes:[1,10,10,15,2],attempts:2}
+    ,"Haste Potion III":{slot:2,subSlot:3,addSlots:5,maxes:[1,20,15,25,4],attempts:2}
     ,"Heavenly Potion I":{slot:3,subSlot:1,addSlots:4,maxes:[100,50,20,1],attempts:2}
     ,"Heavenly Potion II":{slot:3,subSlot:2,addSlots:5,maxes:[2,125,75,50,1],attempts:2}
     ,"Universe Potion I":{slot:4,subSlot:1,addSlots:3,maxes:[10,15,2],attempts:2}}
@@ -223,12 +227,13 @@ saveOptions(){
 saveOptions()
 
 updateYesClicked(){
-    Run % (sData.versionLink ? sData.versionLink : "https://github.com/BuilderDolphin/dolphSol-Macro/releases/latest")
+    vLink := sData.updateInfo.versionLink
+    Run % (vLink ? vLink : "https://github.com/BuilderDolphin/dolphSol-Macro/releases/latest")
     ExitApp
 }
 
 updateStaticData(){
-    url := "https://raw.githubusercontent.com/BuilderDolphin/dolphSol-Macro/main/lib/staticData.ini"
+    url := "https://raw.githubusercontent.com/BuilderDolphin/dolphSol-Macro/main/lib/staticData.json"
 
     WinHttp := ComObjCreate("WinHttp.WinHttpRequest.5.1")
     WinHttp.Open("GET", url, false)
@@ -238,16 +243,21 @@ updateStaticData(){
 
     If (WinHttp.Status = 200) {
         content := WinHttp.ResponseText
-        FileDelete, staticData.ini
-        FileAppend, %content%, staticData.ini
+        FileDelete, staticData.json
+        FileAppend, %content%, staticData.json
     }
 
-    sData := getINIData("staticData.ini")
-    if (sData.latestVersion != version){
-        MsgBox, 4, % "New Update Available", % "A new update is available! Would you like to head to the GitHub page to update your macro?" . (sData.updateNotes ? ("`n`nUpdate Notes:`n" . sData.updateNotes) : "")
+    FileRead, staticDataContent, % "staticData.json"
+    sData := Jxon_Load(staticDataContent)[1]
+    if (sData.updateInfo.latestVersion != version){
+        uNotes := sData.updateInfo.updateNotes
+        MsgBox, 4, % "New Update Available", % "A new update is available! Would you like to head to the GitHub page to update your macro?" . (uNotes ? ("`n`nUpdate Notes:`n" . uNotes) : "")
         
         IfMsgBox Yes
             updateYesClicked()
+    }
+    if (sData.announcement){
+        MsgBox, 0,Macro Announcement,% sData.announcement
     }
 }
 updateStaticData()
@@ -423,6 +433,10 @@ stop(terminate := 0) {
 
     liftKeys()
 
+    if (camFollowMode){
+        rotateCameraMode()
+    }
+
     applyNewUIOptions()
     saveOptions()
 
@@ -470,17 +484,26 @@ walkSleep(d){
     Sleep, % getWalkTime(d)
 }
 
+global azertyReplace := {"w":"z","a":"q"}
+
+walkSend(k,t){
+    if (options.AzertyLayout && azertyReplace[k]){
+        k := azertyReplace[k]
+    }
+    Send, % "{" . k . (t ? " " . t : "") . "}"
+}
+
 press(k, duration := 50) {
-    Send, {%k% Down}
+    walkSend(k,"Down")
     walkSleep(duration)
-    Send, {%k% Up}
+    walkSend(k,"Up")
 }
 press2(k, k2, duration := 50) {
-    Send, {%k% Down}
-    Send, {%k2% Down}
+    walkSend(k,"Down")
+    walkSend(k2,"Down")
     walkSleep(duration)
-    Send, {%k% Up}
-    Send, {%k2% Up}
+    walkSend(k,"Up")
+    walkSend(k2,"Up")
 }
 
 reset() {
@@ -508,6 +531,9 @@ initialize()
 {
     initialized := 1
     resetZoom()
+
+    alignCamera()
+
     if (options.InitialAlign){
         ; runPath("initialAlignment",[],1) no more no reset!
     }
@@ -539,23 +565,74 @@ resetZoom(){
     }
 }
 
-
 ; Paths
+
+rotateCameraMode(){
+    press("Esc")
+    Sleep, 250
+    press("Tab")
+    Sleep, 150
+    press("Down")
+    Sleep, 150
+    press("Right")
+    Sleep, 150
+    press("Right")
+    Sleep, 150
+    press("Esc")
+    Sleep, 250
+
+    camFollowMode := !camFollowMode
+}
 
 alignCamera(){
     closeChat()
     Sleep, 200
 
+    reset()
+    Sleep, 100
+
+    getRobloxPos(rX,rY,rW,rH)
+
+    rotateCameraMode()
+
     clickMenuButton(2)
     Sleep, 500
-    getRobloxPos(rX,rY,rW,rH)
+    
     MouseMove, % rX + rW*0.15, % rY + 44 + rH*0.05 + options.BackOffset
     Sleep, 200
     MouseClick
-    Sleep, 500
+    Sleep, 200
+
+    rotateCameraMode()
+
+    Sleep, 100
+
+    walkSend("w","Down")
+    walkSend("d","Down")
+    walkSleep(500)
+    jump()
+    walkSleep(400)
+    jump()
+    walkSleep(600)
+
+    walkSend("d","Up")
+    walkSend("a","Down")
+    walkSleep(1500)
+
+    walkSend("a","Up")
+    walkSend("w","Up")
+
+    rotateCameraMode()
+
+    Sleep, 1500
+
+    rotateCameraMode()
+
+    reset()
+    Sleep, 2000
 }
 
-align(forCollection := 0){ ; align v2
+align(){ ; align v2
     if (isSpawnCentered && forCollection){
         isSpawnCentered := 0
         atSpawn := 0
@@ -566,30 +643,18 @@ align(forCollection := 0){ ; align v2
         atSpawn := 0
     } else {
         reset()
-        Sleep, 4000
+        Sleep, 2000
     }
 
-    alignCamera()
-
-    Send, {w Down}
-    Send, {a Down}
+    walkSend("d","Down")
+    walkSend("w","Down")
     walkSleep(2500)
-    Send, {a Up}
+    walkSend("w","Up")
     walkSleep(750)
-    Send, {w Up}
+    walkSend("d","Up")
     Sleep, 50
-    if (forCollection){
-        Send, {s Down}
-        Send, {d Down}
-        walkSleep(1000)
-        Send, {s Up}
-        walkSleep(100)
-        Send, {d Up}
-        Sleep, 50
-    } else {
-        press("s",2500)
-        Sleep, 50
-    }
+    press("a",2500)
+    Sleep, 50
 }
 
 collect(num){
@@ -682,120 +747,12 @@ runPath(pathName,voidPoints,noCenter = 0){
     }
 }
 
-searchForItemsOld(){
-    updateStatus("Searching for Items")
-    ; item 1
-    updateStatus("Searching for Items (#1)")
-    press("d",4250)
-    press("w",1250)
-    collect(1)
-
-    ; item 2
-    updateStatus("Searching for Items (#2)")
-    press("w",1500)
-    press("a",250)
-    press("w",3100)
-    press("d",250)
-    collect(2)
-
-    ; item 3
-    updateStatus("Searching for Items (#3)")
-    press("a",500)
-    press2("s","a",2800)
-    Send, {a Down}
-    walkSleep(100)
-    jump()
-    walkSleep(700)
-    jump()
-    walkSleep(1200)
-    Send, {w Down}
-    walkSleep(750)
-    Send, {a Up}
-    Send, {w Up}
-    press("d",250)
-    press("s",250)
-    Send, {a Down}
-    jump()
-    walkSleep(700)
-    Send, {a Up}
-    walkSleep(50)
-    Send, {w Down}
-    jump()
-    walkSleep(900)
-    Send, {w Up}
-    press("d",800)
-    collect(3)
-    
-    ; item 4
-    updateStatus("Searching for Items (#4)")
-    press("a",1550)
-    press("w",1200)
-    Send, {d Down}
-    walkSleep(1250)
-    Send {w Down}
-    walkSleep(750)
-    Send {d Up}
-    Send {w Up}
-    collect(4)
-
-    ; item 5
-    updateStatus("Searching for Items (#5)")
-    press("a",1500)
-    press("d",250)
-    press("s",5100)
-    press("a",1400)
-    press("s",600)
-    collect(5)
-
-    ; item 6
-    updateStatus("Searching for Items (#6)")
-    Send {a Down}
-    jump()
-    walkSleep(300)
-    Send {a Up}
-    press("s",4100)
-    press("d",250)
-    collect(6)
-
-    ; item 7
-    updateStatus("Searching for Items (#7)")
-    Send {s Down}
-    walkSleep(2500)
-    press("d",1000)
-    Send {s Up}
-    press("w",200)
-    Send {d Down}
-    walkSleep(100)
-    jump()
-    walkSleep(1250)
-    Send {s Down}
-    walkSleep(500)
-    Send {s Up}
-    jump()
-    walkSleep(1000)
-    Send {s Down}
-    walkSleep(500)
-    Send {d Up}
-    Send {Space Down}
-    walkSleep(1100)
-    Send {Space Up}
-    Send {s Up}
-    Sleep, 500 ; normal bc waiting for jump to land
-    press("d",700)
-    press("w",850)
-    press("d",150)
-    collect(7)
-    
-
-    options.CollectionLoops += 1
-}
-
 searchForItems(){
     updateStatus("Searching for Items")
     
     atSpawn := 0
 
-    runPath("searchForItems",[8250],1)
+    runPath("searchForItems",[8250,18000],1)
 
     options.CollectionLoops += 1
 }
@@ -811,35 +768,9 @@ doObby(){
 walkToObby(){
     updateStatus("Walking to Obby")
     if(options.ArcanePath){
-        if(options.VIP){
-            send {a down}
-            walkSleep(2300)
-            jump()
-            walkSleep(500)
-            arcaneTeleport()
-            walkSleep(625)
-            jump()
-            walkSleep(1850)
-            send {a up}
-        }else{
-            send {a down}
-            walkSleep(2300)
-            jump()
-            walkSleep(500)
-            arcaneTeleport()
-            walkSleep(550)
-            jump()
-            walkSleep(1850)
-            send {a up}
-        }
+        
     } else {
-        send {a down}
-        walkSleep(2300)
-        jump()
-        walkSleep(2000)
-        jump()
-        walkSleep(1850)
-        send {a up}
+        
     }
 }
 
@@ -853,27 +784,27 @@ obbyRun(){
 }
 
 walkToJakesShop(){
-    press("a",800)
-    press("s",1200)
+    press("w",800)
+    press("a",1200)
 }
 
 walkToPotionCrafting(){
-    Send {a Down}
+    walkSend("w","Down")
     walkSleep(2300)
     jump()
     walkSleep(300 + 100*(!options.VIP))
-    Send {a Up}
-    press("s",9500)
-    Send {w Down}
+    walkSend("w","Up")
+    press("a",9500)
+    walkSend("d","Down")
     jump()
-    walkSleep(1150)
-    Send {w Up}
+    walkSleep(900)
+    walkSend("d","Up")
     Send {Space Down}
-    Send {d Down}
+    walkSend("s","Down")
     walkSleep(2000)
     Send {Space Up}
     walkSleep(3000)
-    Send {d Up}
+    walkSend("s","Up")
 }
 
 ; End of paths
@@ -1085,7 +1016,7 @@ getMenuButtonPosition(num, ByRef posX := "", ByRef posY := ""){ ; num is 1-7, 1 
     menuBarVSpacing := 10.5*(height/1080)
     menuBarButtonSize := 58*(width/1920)
     menuEdgeCenter := [rX + menuBarOffset, rY + (height/2)]
-    startPos := [menuEdgeCenter[1]+(menuBarButtonSize/2),menuEdgeCenter[2]+(menuBarButtonSize/4)-(menuBarButtonSize+menuBarVSpacing-1)*3] ; final factor = 0.5x (x is number of menu buttons visible to all, so exclude private server button)
+    startPos := [menuEdgeCenter[1]+(menuBarButtonSize/2),menuEdgeCenter[2]+(menuBarButtonSize/4)-(menuBarButtonSize+menuBarVSpacing-1)*3.5] ; final factor = 0.5x (x is number of menu buttons visible to all, so exclude private server button)
     
     posX := startPos[1]
     posY := startPos[2] + (menuBarButtonSize+menuBarVSpacing)*(num-1)
@@ -1185,7 +1116,11 @@ clickCraftingSlot(num,isPotionSlot := 0){
             Click, WheelDown
             Sleep, 200
         }
-        MouseMove, % scrollCenter, % scrollStartY + slotHeight*(fittingSlots-1) + rCount
+        if (isPotionSlot || (num != 13)){
+            MouseMove, % scrollCenter, % scrollStartY + slotHeight*(fittingSlots-1) + rCount
+        } else {
+            MouseMove, % scrollCenter, % scrollStartY + slotHeight*(fittingSlots-3) + rCount
+        }
     } else {
         MouseMove, % scrollCenter, % scrollStartY + slotHeight*(num-1)
     }
@@ -1256,6 +1191,9 @@ handleCrafting(){
         updateStatus("Walking to Stella's Cave (Crafting)")
         walkToPotionCrafting()
         Sleep, 2000
+        Send {Right Down}
+        Sleep, 1000
+        Send {Right Up}
         press("f")
         Sleep, 500
         updateStatus("Crafting Potions")
@@ -1279,6 +1217,8 @@ handleCrafting(){
         MouseClick
         Sleep, 500
         resetZoom()
+
+        alignCamera()
     }
     if (options.ItemCraftingEnabled){
         align()
@@ -1309,6 +1249,8 @@ handleCrafting(){
         MouseClick
         Sleep, 500
         resetZoom()
+
+        alignCamera()
     }
 }
 
@@ -1628,7 +1570,8 @@ mainLoop(){
     }
 
     if (options.CollectItems){
-        align(1)
+        reset()
+        Sleep, 2000
         searchForItems()
     }
 
