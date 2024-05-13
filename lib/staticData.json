@@ -1,0 +1,322 @@
+[{
+    "announcement":"",
+    "updateInfo": {
+        "latestVersion":"v1.4 pre",
+        "versionLink":"https://github.com/BuilderDolphin/dolphSol-Macro/releases/latest",
+        "updateNotes":"- Testing version of the new macro, obby is still not functional yet."
+    },
+    "stars": {
+        "495104": {
+            "name": "Undead",
+            "image": "https://static.wikia.nocookie.net/sol-rng/images/e/eb/UndeadAura.gif",
+            "rarity": 12000
+        },
+        "12505855": {
+            "name": "Comet [From Starfall]",
+            "image": "https://static.wikia.nocookie.net/sol-rng/images/2/21/CometAura.gif",
+            "rarity": 12000,
+            "mutations": [
+                {
+                    "name": "Comet",
+                    "image": "https://static.wikia.nocookie.net/sol-rng/images/2/21/CometAura.gif",
+                    "rarity": 120000,
+                    "requirements": {
+                        "is100k": 1
+                    }
+                }
+            ]
+        },
+        "7881162": {
+            "name": "Corrosive",
+            "image": "https://static.wikia.nocookie.net/sol-rng/images/9/94/Corrosive.gif",
+            "rarity": 12000,
+            "mutations": [
+                {
+                    "name": "Astral [From Corruption]",
+                    "image": "https://static.wikia.nocookie.net/sol-rng/images/c/ca/Astral_gif.gif",
+                    "rarity": 267200,
+                    "requirements": {
+                        "is100k": 1
+                    }
+                },
+                {
+                    "name": "Astral",
+                    "image": "https://static.wikia.nocookie.net/sol-rng/images/c/ca/Astral_gif.gif",
+                    "rarity": 1336000,
+                    "requirements": {
+                        "is1m": 1
+                    }
+                }
+            ]
+        },
+        "16728645": {
+            "name": "Rage : Heated",
+            "image": "https://static.wikia.nocookie.net/sol-rng/images/1/14/RageHeatedAura.gif",
+            "rarity": 12800
+        },
+        "1315860": {
+            "name": "Ink : Leak",
+            "image": "https://static.wikia.nocookie.net/sol-rng/images/5/5f/Ink-_Leak_stuffversion_2.png",
+            "rarity": 14000
+        },
+        "16777215": {
+            "name": "Powered",
+            "image": "https://static.wikia.nocookie.net/sol-rng/images/9/9a/Powered.gif",
+            "rarity": 16384
+        },
+        "5015039": {
+            "name": "Aquatic",
+            "image": "https://static.wikia.nocookie.net/sol-rng/images/a/a9/AquaticAura.gif",
+            "rarity": 40000
+        },
+        "16751631": {
+            "name": "Solar",
+            "image": "https://static.wikia.nocookie.net/sol-rng/images/4/41/SolarAuraNight.gif",
+            "rarity": 50000,
+            "mutations": [
+                {
+                    "name": "Solar : Solstice [From Daytime]",
+                    "image": "https://static.wikia.nocookie.net/sol-rng/images/1/1c/SolarSolsticeG.gif",
+                    "rarity": 500000,
+                    "requirements": {
+                        "is100k": 1
+                    }
+                },
+                {
+                    "name": "Solar : Solstice",
+                    "image": "https://static.wikia.nocookie.net/sol-rng/images/1/1c/SolarSolsticeG.gif",
+                    "rarity": 5000000,
+                    "requirements": {
+                        "is1m": 1
+                    }
+                }
+            ]
+        },
+        "7822335": {
+            "name": "Lunar",
+            "image": "https://static.wikia.nocookie.net/sol-rng/images/b/b2/LunarAura.gif",
+            "rarity": 50000,
+            "mutations": [
+                {
+                    "name": "Lunar : Full Moon [From Nighttime]",
+                    "image": "https://static.wikia.nocookie.net/sol-rng/images/b/b4/LunarFullMoonAura.gif",
+                    "rarity": 500000,
+                    "requirements": {
+                        "is100k": 1
+                    }
+                },
+                {
+                    "name": "Lunar : Full Moon",
+                    "image": "https://static.wikia.nocookie.net/sol-rng/images/b/b4/LunarFullMoonAura.gif",
+                    "rarity": 5000000,
+                    "requirements": {
+                        "is1m": 1
+                    }
+                }
+            ]
+        },
+        "16754944": {
+            "name": "Flushed : Lobotomy",
+            "image": "https://static.wikia.nocookie.net/sol-rng/images/8/84/Flushed_Lobotomy_Collection.png",
+            "rarity": 69000
+        },
+        "5595647": {
+            "name": "Nautilus",
+            "image": "https://static.wikia.nocookie.net/sol-rng/images/e/e2/NautilusAuraNight.gif",
+            "rarity": 70000
+        },
+        "8257503": {
+            "name": "Permafrost",
+            "image": "https://static.wikia.nocookie.net/sol-rng/images/1/1e/PermafrostAura.gif",
+            "rarity": 73500,
+            "biome": {"name": "Snowy", "factor":3}
+        },
+        "5466879": {
+            "name": "Starlight",
+            "image": "https://static.wikia.nocookie.net/sol-rng/images/2/22/StarlightCollection.gif",
+            "rarity": 50000
+        },
+        "11035135": {
+            "name": "Hazard : Rays",
+            "image": "https://static.wikia.nocookie.net/sol-rng/images/c/c1/Hazard_Rays.gif",
+            "rarity": 70000,
+            "biome": {"name": "Corruption", "factor":5}
+        },
+        "8947848": {
+            "name": "Stormal",
+            "image": "https://static.wikia.nocookie.net/sol-rng/images/8/8b/StormalAuraNight.gif",
+            "rarity": 90000,
+            "biome": {"name": "Windy", "factor":3}
+        },
+        "3721688": {
+            "name": "Exotic",
+            "image": "https://static.wikia.nocookie.net/sol-rng/images/7/71/ExoticAura150x150.gif",
+            "rarity": 99999,
+            "mutations": [
+                {
+                    "name": "Exotic - Apex",
+                    "image": "https://static.wikia.nocookie.net/sol-rng/images/3/38/R_apex.gif",
+                    "rarity": 49999500,
+                    "cornerColor":9969005,
+                    "requirements": {
+                        "is1m": 1
+                    }
+                }
+            ]
+        },
+        "10691144": {
+            "name": "Diaboli : Void",
+            "image": "https://static.wikia.nocookie.net/sol-rng/images/0/07/DiaboliVoidAura.gif",
+            "rarity": 100400
+        },
+        "616503": {
+            "name": "Jade",
+            "image": "https://static.wikia.nocookie.net/sol-rng/images/0/06/JadeInCollection.gif",
+            "rarity": 125000
+        },
+        "2447103": {
+            "name": "BOUNDED",
+            "image": "https://static.wikia.nocookie.net/sol-rng/images/5/52/BoundedAuraNight.gif",
+            "rarity": 200000
+        },
+        "9937663": {
+            "name": "Celestial",
+            "image": "https://static.wikia.nocookie.net/sol-rng/images/6/60/CelestialAura.gif",
+            "rarity": 350000
+        },
+        "2627218": {
+            "name": "Kyawthuite",
+            "image": "https://static.wikia.nocookie.net/sol-rng/images/3/3b/Kyawthuite_Collection.gif",
+            "rarity": 850000
+        },
+        "7773439": {
+            "name": "Arcane",
+            "image": "https://static.wikia.nocookie.net/sol-rng/images/8/86/Arcane_Gif_25Fps.gif",
+            "rarity": 1000000,
+            "cornerColor": 3355443
+        },
+        "8324736": {
+            "name": "Magnetic : Reverse Polarity",
+            "image": "https://static.wikia.nocookie.net/sol-rng/images/c/c2/MagneticReversePolarityCollection.gif",
+            "rarity": 1024000
+        },
+        "3223857": {
+            "name": "Undefined",
+            "image": "https://static.wikia.nocookie.net/sol-rng/images/f/ff/UndefinedAuraNight.gif",
+            "rarity": 1111000
+        },
+        "5794559": {
+            "name": "Gravitational",
+            "image": "https://static.wikia.nocookie.net/sol-rng/images/6/62/Gravitationalgif.gif",
+            "rarity": 2000000,
+            "cornerColor": 3355443
+        },
+        "5411071": {
+            "name": "Virtual",
+            "image": "https://static.wikia.nocookie.net/sol-rng/images/2/20/Virtual.gif",
+            "rarity": 2500000
+        },
+        "943242": {
+            "name": "Poseidon",
+            "image": "https://static.wikia.nocookie.net/sol-rng/images/2/2e/PoseidonInGame.png",
+            "rarity": 4000000,
+            "biome": {"name": "Rainy", "factor":4},
+            "cornerColor": 141352
+        },
+        "5540095": {
+            "name": "Aquatic : Flame",
+            "image": "https://static.wikia.nocookie.net/sol-rng/images/7/7f/Aqua_flame_new_gif.gif",
+            "rarity": 4000000,
+            "cornerColor": 3355443
+        },
+        "16775891": {
+            "name": "Zeus",
+            "image": "https://static.wikia.nocookie.net/sol-rng/images/8/8c/Zeus.gif",
+            "rarity": 4500000,
+            "cornerColor": 3354906
+        },
+        "5325567": {
+            "name": "Galaxy",
+            "image": "https://static.wikia.nocookie.net/sol-rng/images/f/f8/Galaxy_Aura.gif",
+            "rarity": 5000000,
+            "mutations": [
+                {
+                    "name": "Galaxy [From Starfall]",
+                    "image": "https://static.wikia.nocookie.net/sol-rng/images/f/f8/Galaxy_Aura.gif",
+                    "rarity": 500000,
+                    "requirements": {
+                        "is100k": 1
+                    }
+                }
+            ]
+        },
+        "5390591": {
+            "name": "Twilight",
+            "image": "https://static.wikia.nocookie.net/sol-rng/images/4/4d/RobloxPlayerBeta_1Wn7Ej3k18.gif",
+            "rarity": 6000000,
+            "mutations": [
+                {
+                    "name": "Twilight [From Nighttime]",
+                    "image": "https://static.wikia.nocookie.net/sol-rng/images/3/38/R_apex.gif",
+                    "rarity": 600000,
+                    "requirements": {
+                        "is100k": 1
+                    }
+                }
+            ]
+        },
+        "7808256": {
+            "name": "Hades",
+            "image": "https://static.wikia.nocookie.net/sol-rng/images/9/9d/HadesAura.gif",
+            "rarity": 6666666,
+            "biome": {"name": "Hell", "factor":6}
+        },
+        "9660671": {
+            "name": "HYPER-VOLT",
+            "image": "https://static.wikia.nocookie.net/sol-rng/images/d/d4/HpVl.gif",
+            "rarity": 7500000,
+            "cornerColor": 3355443
+        },
+        "16744319": {
+            "name": "STARSCOURGE",
+            "image": "https://static.wikia.nocookie.net/sol-rng/images/a/a4/StarscourgeAura.gif",
+            "rarity": 10000000,
+            "biome": {"name": "Starfall", "factor":10}
+        },
+        "8562687": {
+            "name": "Sailor",
+            "image": "https://static.wikia.nocookie.net/sol-rng/images/0/06/Sailor_Aura.png",
+            "rarity": 12000000,
+            "biome": {"name": "Rainy", "factor":4}
+        },
+        "7665997": {
+            "name": "Glitch",
+            "image": "https://static.wikia.nocookie.net/sol-rng/images/4/44/GlitchAuraingame.gif",
+            "rarity": 12210110
+        },
+        "8759551": {
+            "name": "Arcane : Legacy OR Arcane : Dark (1/2)",
+            "image": "https://static.wikia.nocookie.net/sol-rng/images/3/34/ArcaneLegacyAura.gif",
+            "rarity": 15000000,
+            "cornerColor": 10000536
+        },
+        "16722992": {
+            "name": "CHROMATIC",
+            "image": "https://static.wikia.nocookie.net/sol-rng/images/c/c4/RobloxPlayerBeta_9sJxflFBDP.gif",
+            "rarity": 20000000,
+            "cornerColor": 9975095
+        },
+        "13549311": {
+            "name": "Ethereal",
+            "image": "https://static.wikia.nocookie.net/sol-rng/images/8/80/Ethereall.png",
+            "rarity": 35000000,
+            "cornerColor": 10000536
+        },
+        "6029232": {
+            "name": "Matrix",
+            "image": "https://static.wikia.nocookie.net/sol-rng/images/4/43/RobloxPlayerBeta_Ie55pSxe44.gif",
+            "rarity": 50000000,
+            "cornerColor": 3184771
+        }
+    }
+}]
