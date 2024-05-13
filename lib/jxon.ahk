@@ -1,7 +1,3 @@
-#SingleInstance, Force
-SendMode Input
-SetWorkingDir, %A_ScriptDir%
-
 ; Jxon_Load() by cocobelgica, GitHub: https://github.com/cocobelgica/AutoHotkey-JSON
 
 Jxon_Load(ByRef src, args*)
