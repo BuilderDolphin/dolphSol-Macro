@@ -290,7 +290,8 @@
             "name": "STARSCOURGE",
             "image": "https://static.wikia.nocookie.net/sol-rng/images/a/a4/StarscourgeAura.gif",
             "rarity": 10000000,
-            "biome": {"name": "Starfall", "factor":10}
+            "biome": {"name": "Starfall", "factor":10},
+            "cornerColor": 3354929
         },
         "8562687": {
             "name": "Sailor",
@@ -326,6 +327,13 @@
             "image": "https://static.wikia.nocookie.net/sol-rng/images/4/43/RobloxPlayerBeta_Ie55pSxe44.gif",
             "rarity": 50000000,
             "cornerColor": 3184771
+        },
+        "16744576": {
+            "name": "STARSCOURGE : RADIANT",
+            "image": "https://static.wikia.nocookie.net/sol-rng/images/5/55/Starscourge_Radiant_Ingame.webp",
+            "rarity": 100000000,
+            "cornerColor": 9998994,
+            "biome": {"name": "Starfall", "factor":10}
         }
     }
 }]
