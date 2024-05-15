@@ -30,6 +30,7 @@
             "name": "Corrosive",
             "image": "https://static.wikia.nocookie.net/sol-rng/images/9/94/Corrosive.gif",
             "rarity": 12000,
+            "cornerColor": 0,
             "mutations": [
                 {
                     "name": "Astral [From Corruption]",
@@ -43,6 +44,7 @@
                     "name": "Astral",
                     "image": "https://static.wikia.nocookie.net/sol-rng/images/c/ca/Astral_gif.gif",
                     "rarity": 1336000,
+                    "cornerColor": 0,
                     "requirements": {
                         "is1m": 1
                     }
@@ -57,7 +59,8 @@
         "1315860": {
             "name": "Ink : Leak",
             "image": "https://static.wikia.nocookie.net/sol-rng/images/5/5f/Ink-_Leak_stuffversion_2.png",
-            "rarity": 14000
+            "rarity": 14000,
+            "cornerColor": 0
         },
         "16777215": {
             "name": "Powered",
@@ -205,6 +208,12 @@
             "image": "https://static.wikia.nocookie.net/sol-rng/images/f/ff/UndefinedAuraNight.gif",
             "rarity": 1111000
         },
+        "3104511": {
+            "name": "BOUNDED : UNBOUND",
+            "image": "https://static.wikia.nocookie.net/sol-rng/images/1/1b/Unbound_In-Game.gif",
+            "rarity": 2000000,
+            "cornerColor": 3355443
+        },
         "5794559": {
             "name": "Gravitational",
             "image": "https://static.wikia.nocookie.net/sol-rng/images/6/62/Gravitationalgif.gif",
@@ -257,7 +266,7 @@
             "mutations": [
                 {
                     "name": "Twilight [From Nighttime]",
-                    "image": "https://static.wikia.nocookie.net/sol-rng/images/3/38/R_apex.gif",
+                    "image": "https://static.wikia.nocookie.net/sol-rng/images/4/4d/RobloxPlayerBeta_1Wn7Ej3k18.gif",
                     "rarity": 600000,
                     "requirements": {
                         "is100k": 1
