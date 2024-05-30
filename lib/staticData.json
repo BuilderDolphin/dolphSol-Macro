@@ -322,13 +322,6 @@
             "image": "https://static.wikia.nocookie.net/sol-rng/images/4/43/RobloxPlayerBeta_Ie55pSxe44.gif",
             "rarity": 50000000,
             "cornerColor": 3184771
-        },
-        "16744576": {
-            "name": "STARSCOURGE : RADIANT",
-            "image": "https://static.wikia.nocookie.net/sol-rng/images/5/55/Starscourge_Radiant_Ingame.webp",
-            "rarity": 100000000,
-            "cornerColor": 9998994,
-            "biome": {"name": "Starfall", "factor":10}
         }
     }
 }]
