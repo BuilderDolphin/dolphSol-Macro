@@ -299,11 +299,6 @@
             "rarity": 12000000,
             "biome": {"name": "Rainy", "factor":4}
         },
-        "7665997": {
-            "name": "Glitch",
-            "image": "https://static.wikia.nocookie.net/sol-rng/images/4/44/GlitchAuraingame.gif",
-            "rarity": 12210110
-        },
         "8759551": {
             "name": "Arcane : Legacy OR Arcane : Dark (1/2)",
             "image": "https://static.wikia.nocookie.net/sol-rng/images/3/34/ArcaneLegacyAura.gif",
