@@ -30,7 +30,7 @@ if (RegExMatch(A_ScriptDir,"\.zip")){
 
 Gdip_Startup()
 
-global version := "v1.4 pre"
+global version := "v1.4.0"
 
 global robloxId := 0
 
@@ -431,6 +431,8 @@ stop(terminate := 0) {
         WinClose, % v
     }
 
+    removeDim()
+
     liftKeys()
 
     if (camFollowMode){
@@ -569,9 +571,9 @@ resetZoom(){
 
 rotateCameraMode(){
     press("Esc")
-    Sleep, 250
+    Sleep, 500
     press("Tab")
-    Sleep, 150
+    Sleep, 500
     press("Down")
     Sleep, 150
     press("Right")
@@ -585,6 +587,11 @@ rotateCameraMode(){
 }
 
 alignCamera(){
+    startDim(1,"Aligning Camera, Please wait...")
+
+    WinActivate, % "ahk_id " GetRobloxHWND()
+    Sleep, 500
+
     closeChat()
     Sleep, 200
 
@@ -629,6 +636,7 @@ alignCamera(){
     rotateCameraMode()
 
     reset()
+    removeDim()
     Sleep, 2000
 }
 
@@ -765,18 +773,8 @@ doObby(){
     options.ObbyAttempts += 1
 }
 
-walkToObby(){
-    updateStatus("Walking to Obby")
-    if(options.ArcanePath){
-        
-    } else {
-        
-    }
-}
-
 obbyRun(){
     global lastObby
-    walkToObby()
     Sleep, 250
     doObby()
     lastObby := A_TickCount
@@ -1588,6 +1586,8 @@ mainLoop(){
 
 Menu Tray, Icon, shell32.dll, 3
 
+Gui, Color, 0x000000
+
 Gui mainUI: New, +hWndhGui
 Gui Color, 0xDADADA
 Gui Add, Button, gStartClick vStartButton x8 y224 w80 h23, F1 - Start
@@ -1708,7 +1708,7 @@ Gui Font, s10 w600
 Gui Add, GroupBox, x16 y40 w467 h65 vGeneralSettingsGroup -Theme +0x50000007, General
 Gui Font, s9 norm
 Gui Add, CheckBox, vVIPCheckBox x32 y58 w150 h22 +0x2, % " VIP Gamepass Owned"
-Gui Add, CheckBox, vArcaneCheckBox gArcaneCheckBoxClick x222 y58 w200 h22 +0x2, % " Arcane Teleport Paths"
+Gui Add, CheckBox, vAzertyCheckBox x222 y58 w200 h22 +0x2, % " AZERTY Keyboard Layout"
 Gui Add, Text, x222 y82 w200 h18, % "Collection Back Button Y Offset:"
 Gui Add, Edit, x396 y81 w50 h18
 Gui Add, UpDown, vBackOffsetUpDown Range-500-500, 0
@@ -1761,7 +1761,7 @@ Gui mainUI:Default
 
 
 global directValues := {"ObbyCheckBox":"DoingObby"
-    ,"ArcaneCheckBox":"ArcanePath"
+    ,"AzertyCheckBox":"AzertyLayout"
     ,"ObbyBuffCheckBox":"CheckObbyBuff"
     ,"CollectCheckBox":"CollectItems"
     ,"VIPCheckBox":"VIP"
@@ -2006,6 +2006,29 @@ updateStatus(newStatus){
 
 global selectingAutoEquip := 0
 
+startDim(clickthru := 0,topText := ""){
+    removeDim()
+    w:=A_ScreenWidth,h:=A_ScreenHeight-2
+    if (clickthru){
+        Gui Dimmer:New,+AlwaysOnTop +ToolWindow -Caption +E0x20 ;Clickthru
+    } else {
+        Gui Dimmer:New,+AlwaysOnTop +ToolWindow -Caption
+    }
+    Gui Color, 333333
+    Gui Show,NoActivate x0 y0 w%w% h%h%,Dimmer
+    WinSet Transparent,% 75,Dimmer
+    Gui DimmerTop:New,+AlwaysOnTop +ToolWindow -Caption +E0x20
+    Gui Color, 222222
+    Gui Font, s13
+    Gui Add, Text, % "x0 y0 w400 h40 cWhite 0x200 Center", % topText
+    Gui Show,% "NoActivate x" (A_ScreenWidth/2)-200 " y25 w400 h40"
+}
+
+removeDim(){
+    Gui Dimmer:Destroy
+    Gui DimmerTop:Destroy
+}
+
 startAutoEquipSelection(){
     if (selectingAutoEquip || macroStarted){
         return
@@ -2022,16 +2045,7 @@ startAutoEquipSelection(){
 
     selectingAutoEquip := 1
 
-    w:=A_ScreenWidth,h:=A_ScreenHeight-2
-    Gui Dimmer:New,+AlwaysOnTop +ToolWindow -Caption +E0x20 ;Clickthru
-    Gui Color, 333333
-    Gui Show,NoActivate x0 y0 w%w% h%h%,Dimmer
-    WinSet Transparent,% 75,Dimmer
-    Gui DimmerTop:New,+AlwaysOnTop +ToolWindow -Caption +E0x20
-    Gui Color, 222222
-    Gui Font, s13
-    Gui Add, Text, % "x0 y0 w400 h40 cWhite 0x200 Center", Click the target storage slot (Right-click to cancel)
-    Gui Show,% "NoActivate x" (A_ScreenWidth/2)-200 " y25 w400 h40"
+    startDim(1,"Click the target storage slot (Right-click to cancel)")
 
     Gui mainUI:Hide
 }
@@ -2040,8 +2054,7 @@ cancelAutoEquipSelection(){
     if (!selectingAutoEquip) {
         return
     }
-    Gui Dimmer:Destroy
-    Gui DimmerTop:Destroy
+    removeDim()
     Gui mainUI:Show
     selectingAutoEquip := 0
 }
@@ -2128,7 +2141,6 @@ if (!options.FirstTime){
 if (!options.WasRunning){
     options.WasRunning := 1
     saveOptions()
-    
 }
 
 canStart := 1
@@ -2172,14 +2184,6 @@ WebhookRollImageCheckBoxClick:
     GuiControlGet, v,, WebhookRollImageCheckBox
     if (v){
         MsgBox, 0, Aura Roll Image Warning, % "Warning: Currently, the aura image display for the webhook is fairly unstable, and may cause random delays in webhook sends due to image loading. Enable at your own risk."
-    }
-    return
-
-ArcaneCheckBoxClick:
-    Gui mainUI:Default
-    GuiControlGet,v,,ArcaneCheckBox
-    if (v){
-        MsgBox, 0, Arcane Teleport Notice, % "With the Arcane Teleport option enabled, please ensure that you are auto-equipping any type of Arcane aura at ALL TIMES, otherwise your paths will break.`n`nRemember: It is preferred to select a slot with Arcane in the non-scrolled Aura Storage state (not scrolled down), as reconnecting will reset the scroll upon rejoin, possibly causing you to select a different aura."
     }
     return
 

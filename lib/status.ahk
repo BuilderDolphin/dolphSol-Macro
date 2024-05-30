@@ -202,6 +202,12 @@ commaFormat(num){
 FileRead, staticDataContent, % "staticData.json"
 global staticData := Jxon_Load(staticDataContent)[1]
 
+for i,v in staticData.stars {
+    if (v.rarity < 1000000 && !v.mutations){
+        v.cornerColor := 0
+    }
+}
+
 ; CreateFormData() by tmplinshi, AHK Topic: https://autohotkey.com/boards/viewtopic.php?t=7647
 ; Thanks to Coco: https://autohotkey.com/boards/viewtopic.php?p=41731#p41731
 ; Modified version by SKAN, 09/May/2016

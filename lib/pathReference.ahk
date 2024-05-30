@@ -169,9 +169,9 @@ clickMenuButton(num){
 
 rotateCameraMode(){
     press("Esc")
-    Sleep, 250
+    Sleep, 500
     press("Tab")
-    Sleep, 150
+    Sleep, 500
     press("Down")
     Sleep, 150
     press("Right")
