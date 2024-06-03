@@ -473,6 +473,7 @@ handlePause(){
         updateUIOptions()
         Gui mainUI:Show
     }
+    paused := !paused
 }
 
 global regWalkFactor := 1.25 ; since i made the paths all with vip, normalize
@@ -1750,7 +1751,6 @@ Gui Add, Link, x268 y150 w200 h55, Join the <a href="https://discord.gg/DYUqwJch
 Gui Show, % "w500 h254 x" clamp(options.WindowX,10,A_ScreenWidth-100) " y" clamp(options.WindowY,10,A_ScreenHeight-100), % "dolphSol Macro " version
 
 
-
 ; status bar
 Gui statusBar:New, AlwaysOnTop
 Gui Font, s10 norm
@@ -2155,16 +2155,7 @@ StartClick:
 
 PauseClick:
     MsgBox, 0,% "Pause",% "Please note that the pause feature isn't very stable currently. It is suggested to stop instead."
-    if (!paused)
-    {
-        paused := 1
-        GuiControl,, PauseButton, F2 - Resume
-    }
-    else
-    {
-        paused := 0
-        GuiControl,, PauseButton, F2 - Pause
-    }
+    Pause
     return
 
 StopClick:
