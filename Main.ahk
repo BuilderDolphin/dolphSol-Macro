@@ -1707,6 +1707,7 @@ Gui Tab, 4
 Gui Font, s10 w600
 Gui Add, GroupBox, x16 y40 w467 h65 vGeneralSettingsGroup -Theme +0x50000007, General
 Gui Font, s9 norm
+Gui Add, CheckBox, vDarkModeCheckBox x32 y58 w150 h22 +0x2, % " Dark Mode"
 Gui Add, CheckBox, vVIPCheckBox x32 y58 w150 h22 +0x2, % " VIP Gamepass Owned"
 Gui Add, CheckBox, vAzertyCheckBox x222 y58 w200 h22 +0x2, % " AZERTY Keyboard Layout"
 Gui Add, Text, x222 y82 w200 h18, % "Collection Back Button Y Offset:"
