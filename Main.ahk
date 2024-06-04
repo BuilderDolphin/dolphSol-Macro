@@ -72,6 +72,9 @@ global potionIndex := {0:"None"
     ,7:"Heavenly Potion II"
     ,8:"Universe Potion I"}
 
+global themeIndex := {0:"Light"
+    ,1:"Dark"}
+
 
 global craftingInfo := {"Gilded Coin":{slot:13,addSlots:1,maxes:[1],attempts:5,addedAttempts:1}
     ,"Fortune Potion I":{slot:1,subSlot:1,addSlots:4,maxes:[5,1,5,1],attempts:2}
@@ -123,6 +126,7 @@ global options := {"DoingObby":1
     ,"AutoEquipX":-0.415
     ,"AutoEquipY":-0.438
     ,"PrivateServerId":""
+    ,"Theme":"Light"
     ,"WebhookEnabled":0
     ,"WebhookLink":""
     ,"WebhookImportantOnly":0
@@ -1715,12 +1719,17 @@ Gui Add, UpDown, vBackOffsetUpDown Range-500-500, 0
 Gui Add, Button, vImportSettingsButton gImportSettingsClick x30 y80 w130 h20, Import Settings
 
 Gui Font, s10 w600
-Gui Add, GroupBox, x16 y105 w467 h105 vReconnectSettingsGroup -Theme +0x50000007, Reconnect
+Gui Add, GroupBox, x16 y105 w267 h105 vReconnectSettingsGroup -Theme +0x50000007, Reconnect
 Gui Font, s9 norm
-Gui Add, CheckBox, vReconnectCheckBox x32 y127 w300 h16 +0x2, % " Enable Reconnect (Will reconnect if you disconnect)"
-Gui Add, Text, x26 y148 w100 h20 vPrivateServerInputHeader BackgroundTrans, Private Server Link:
-Gui Add, Edit, x31 y167 w437 h20 vPrivateServerInput,% ""
+Gui Add, CheckBox, vReconnectCheckBox x32 y127 w150 h16 +0x2, % "Enable Reconnect"
+Gui Add, Text, x24 y148 w100 h20 vPrivateServerInputHeader BackgroundTrans, Private Server Link:
+Gui Add, Edit, x25 y167 w235 h20 vPrivateServerInput,% ""
 
+themeOptions := "Light||Dark"
+Gui Font, s10 w600
+Gui Add, GroupBox, x290 y105 w193 h105 vThemeSettingsGroup -Theme +0x50000007, Theme
+Gui Font, s9 norm
+Gui Add, DropDownList, x300 y127 w165 h10 vThemeDropdown R9, % themeOptions
 
 ; credits tab
 Gui Tab, 5
@@ -1798,7 +1807,7 @@ updateUIOptions(){
     } else {
         GuiControl,, PrivateServerInput,% ""
     }
-    
+
     Loop 7 {
         v := options["ItemSpot" . A_Index]
         GuiControl,,CollectSpot%A_Index%CheckBox,%v%
@@ -1847,6 +1856,10 @@ applyNewUIOptions(){
         }
         options.PrivateServerId := serverId ""
     }
+
+    GuiControlGet, rValue,,ThemeDropdown
+    options.Theme := rValue
+
 
     GuiControlGet, webhookLink,,WebhookInput
     if (webhookLink){
