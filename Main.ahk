@@ -1,4 +1,4 @@
-﻿; dolpSol Macro
+; dolpSol Macro
 ;   A macro for Sol's RNG on Roblox
 ;   GNU General Public License
 ;   Free for anyone to use
@@ -123,6 +123,7 @@ global options := {"DoingObby":1
     ,"AutoEquipX":-0.415
     ,"AutoEquipY":-0.438
     ,"PrivateServerId":""
+    ,"Theme":"0"
     ,"WebhookEnabled":0
     ,"WebhookLink":""
     ,"WebhookImportantOnly":0
@@ -156,6 +157,11 @@ global options := {"DoingObby":1
 global sData := {}
 
 global privateServerPre := "https://www.roblox.com/games/15532962292/Sols-RNG?privateServerLinkCode="
+
+iniFile := A_ScriptDir . "\settings\config.ini"
+section := "Options"
+themeKey := "Theme"
+IniRead, savedTheme, %iniFile%, %section%, %themeKey% ; i don't know any other way to save dropdown data so this might be a scuffed way. it works though
 
 getINIData(path){
     FileRead, retrieved, %path%
@@ -269,6 +275,7 @@ updateStaticData()
 CreateFormData(ByRef retData, ByRef retHeader, objParam) {
 	New CreateFormData(retData, retHeader, objParam)
 }
+
 
 Class CreateFormData {
 
@@ -1589,14 +1596,20 @@ Menu Tray, Icon, shell32.dll, 3
 Gui, Color, 0x000000
 
 Gui mainUI: New, +hWndhGui
-Gui Color, 0xDADADA
+if(savedTheme = 0){
+    Gui Color, 0xDADADA
+} else {
+    Gui Color, 0x1B1B1B
+}
+if(savedTheme = 0){
+; LIGHT theme
 Gui Add, Button, gStartClick vStartButton x8 y224 w80 h23, F1 - Start
 Gui Add, Button, gPauseClick vPauseButton x96 y224 w80 h23, F2 - Pause
 Gui Add, Button, gStopClick vStopButton x184 y224 w80 h23, F3 - Stop
 Gui Font, s11 Norm, Segoe UI
 Gui Add, Picture, gDiscordServerClick w26 h20 x462 y226, % mainDir "images\discordIcon.png"
 
-Gui Add, Tab3, vMainTabs x8 y8 w484 h210 +0x800000, Main|Crafting|Status|Settings|Credits
+Gui Add, Tab3, vMainTabs x8 y8 w484 h210 cBlack, Main|Crafting|Status|Settings|Credits
 ; main tab
 Gui Tab, 1
 
@@ -1715,38 +1728,194 @@ Gui Add, UpDown, vBackOffsetUpDown Range-500-500, 0
 Gui Add, Button, vImportSettingsButton gImportSettingsClick x30 y80 w130 h20, Import Settings
 
 Gui Font, s10 w600
-Gui Add, GroupBox, x16 y105 w467 h105 vReconnectSettingsGroup -Theme +0x50000007, Reconnect
+Gui Add, GroupBox, x16 y105 w267 h105 vReconnectSettingsGroup -Theme +0x50000007, Reconnect
 Gui Font, s9 norm
-Gui Add, CheckBox, vReconnectCheckBox x32 y127 w300 h16 +0x2, % " Enable Reconnect (Will reconnect if you disconnect)"
-Gui Add, Text, x26 y148 w100 h20 vPrivateServerInputHeader BackgroundTrans, Private Server Link:
-Gui Add, Edit, x31 y167 w437 h20 vPrivateServerInput,% ""
+Gui Add, CheckBox, vReconnectCheckBox x32 y127 w150 h16 +0x2, % "Enable Reconnect"
+Gui Add, Text, x24 y148 w100 h20 vPrivateServerInputHeader BackgroundTrans, Private Server Link:
+Gui Add, Edit, x25 y167 w235 h20 vPrivateServerInput,% ""
+
+themeOptions := "Light||Dark"
+Gui Font, s10 w600
+Gui Add, GroupBox, x290 y105 w193 h105 vThemeSettingsGroup -Theme +0x50000007, Theme
+Gui Font, s9 norm
+Gui Add, DropDownList, x300 y127 w165 h10 vThemeDropdown R9, % themeOptions
+Gui Add, Text, vThemeHelp x300 y155 w150 h32 BackgroundTrans, % "Restart the macro to see the changes."
+} else {
+
+
+
+; DARK theme
+Gui Add, Button, gStartClick vStartButton x8 y224 w80 h23, F1 - Start
+Gui Add, Button, gPauseClick vPauseButton x96 y224 w80 h23, F2 - Pause
+Gui Add, Button, gStopClick vStopButton x184 y224 w80 h23, F3 - Stop
+Gui Font, s11 Norm, Segoe UI
+Gui Add, Picture, gDiscordServerClick w26 h20 x462 y226, % mainDir "images\discordIcon.png"
+
+Gui Add, Tab3, vMainTabs x8 y8 w484 h210 cWhite, Main|Crafting|Status|Settings|Credits
+; main tab
+Gui Tab, 1
+
+Gui Font, s10 w600
+Gui Add, GroupBox, x16 y40 w231 h70 vObbyOptionGroup cWhite, Obby
+Gui Font, s9 norm
+Gui Add, CheckBox, vObbyCheckBox x32 y59 w180 h26 cWhite, % " Do Obby (Every 2 Mins)"
+Gui Add, CheckBox, vObbyBuffCheckBox x32 y80 w200 h26 cWhite, % " Check for Obby Buff Effect"
+Gui Add, Button, gObbyHelpClick vObbyHelpButton x221 y50 w23 h23, ?
+
+Gui Font, s10 w600
+Gui Add, GroupBox, x252 y40 w231 h70 vAutoEquipGroup cWhite, Auto Equip
+Gui Font, s9 norm
+Gui Add, CheckBox, vAutoEquipCheckBox x268 y61 w190 h22 cWhite, % " Enable Auto Equip"
+Gui Add, Button, gAutoEquipSlotSelectClick vAutoEquipSlotSelectButton x268 y83 w115 h22, Select Storage Slot
+Gui Add, Button, gAutoEquipHelpClick vAutoEquipHelpButton x457 y50 w23 h23, ?
+
+Gui Font, s10 w600
+Gui Add, GroupBox, x16 y110 w467 h100 vCollectOptionGroup cWhite, Item Collecting
+Gui Font, s9 norm
+Gui Add, CheckBox, vCollectCheckBox x32 y129 w261 h26 cWhite, % " Collect Items Around the Map"
+Gui Add, Button, gCollectHelpClick vCollectHelpButton x457 y120 w23 h23, ?
+
+Gui Add, GroupBox, x26 y155 w447 h48 vCollectSpotsHolder cWhite, Collect From Spots
+Gui Add, CheckBox, vCollectSpot1CheckBox x42 y174 w30 h26 cWhite, % " 1"
+Gui Add, CheckBox, vCollectSpot2CheckBox x82 y174 w30 h26 cWhite, % " 2"
+Gui Add, CheckBox, vCollectSpot3CheckBox x122 y174 w30 h26 cWhite, % " 3"
+Gui Add, CheckBox, vCollectSpot4CheckBox x162 y174 w30 h26 cWhite, % " 4"
+Gui Add, CheckBox, vCollectSpot5CheckBox x202 y174 w30 h26 cWhite, % " 5"
+Gui Add, CheckBox, vCollectSpot6CheckBox x242 y174 w30 h26 cWhite, % " 6"
+Gui Add, CheckBox, vCollectSpot7CheckBox x282 y174 w30 h26 cWhite, % " 7"
+
+; crafting tab
+Gui Tab, 2
+Gui Font, s10 w600
+Gui Add, GroupBox, x16 y40 w231 h110 vItemCraftingGroup cWhite, Item Crafting
+Gui Font, s9 norm
+Gui Add, CheckBox, vItemCraftingCheckBox x32 y58 w190 h22 cWhite, % " Automatic Item Crafting"
+Gui Font, s9 w600
+Gui Add, GroupBox, x21 y80 w221 h65 vItemCraftingOptionsGroup cWhite, Crafting Options
+Gui Font, s9 norm
+Gui Add, CheckBox, vCraftGildedCoinCheckBox x37 y98 w190 h22 cWhite, % " Gilded Coin"
+
+potionSlotOptions := "None||Fortune Potion I|Haste Potion I|Heavenly Potion I|Universe Potion I|Fortune Potion II|Haste Potion II|Heavenly Potion II|Fortune Potion III"
+Gui Font, s10 w600
+Gui Add, GroupBox, x252 y40 w231 h170 vPotionCraftingGroup cWhite, Potion Crafting
+Gui Font, s9 norm
+Gui Add, CheckBox, vPotionCraftingCheckBox x268 y58 w200 h22 cWhite, % " Automatic Potion Crafting"
+Gui Font, s9 w600
+Gui Add, GroupBox, x257 y80 w221 h125 vPotionCraftingSlotsGroup cWhite, Crafting Slots
+Gui Font, s9 norm
+Gui Add, Text, x270 y107 w100 h16 vItemCraftingSlot1Header BackgroundTrans cWhite, Slot 1:
+Gui Add, DropDownList, x312 y103 w120 h10 vPotionCraftingSlot1DropDown R9, % potionSlotOptions
+Gui Add, Text, x270 y140 w100 h16 vItemCraftingSlot2Header BackgroundTrans cWhite, Slot 2:
+Gui Add, DropDownList, x312 y136 w120 h10 vPotionCraftingSlot2DropDown R9, % potionSlotOptions
+Gui Add, Text, x270 y173 w100 h16 vItemCraftingSlot3Header BackgroundTrans cWhite, Slot 3:
+Gui Add, DropDownList, x312 y169 w120 h10 vPotionCraftingSlot3DropDown R9, % potionSlotOptions
+
+Gui Font, s10 w600
+Gui Add, GroupBox, x16 y150 w231 h60 vCraftingIntervalGroup cWhite, Crafting Interval
+Gui Font, s10 norm
+Gui Add, Text, x32 y170 w170 h35 vCraftingIntervalText BackgroundTrans cWhite, Craft every              minutes
+Gui Font, s9 norm
+Gui Add, Edit, x100 y171 w45 h18 vCraftingIntervalInput, 10
+Gui Add, UpDown, vCraftingIntervalUpDown Range1-300, 10
+
+
+
+; status tab
+Gui Tab, 3
+Gui Font, s10 w600
+Gui Add, GroupBox, x16 y40 w130 h170 vStatsGroup cWhite, Stats
+Gui Font, s9 norm
+Gui Add, Text, vStatsDisplay x22 y58 w118 h146 cWhite, runtime: 123`ndisconnects: 1000
+
+Gui Font, s10 w600
+Gui Add, GroupBox, x151 y40 w200 h170 vWebhookGroup cWhite, Discord Webhook
+Gui Font, s7.5 norm
+Gui Add, CheckBox, vWebhookCheckBox x166 y63 w120 h16 cWhite gEnableWebhookToggle, % " Enable Webhook"
+Gui Add, Text, x161 y85 w100 h20 vWebhookInputHeader BackgroundTrans cWhite, Webhook URL:
+Gui Add, Edit, x166 y103 w169 h18 vWebhookInput,% ""
+Gui Add, Button, gWebhookHelpClick vWebhookHelpButton x325 y50 w23 h23, ?
+Gui Add, CheckBox, vWebhookImportantOnlyCheckBox x166 y126 w140 h16 cWhite, % " Important events only"
+Gui Add, Text, vWebhookUserIDHeader x161 y145 w150 h14 BackgroundTrans cWhite, % "Discord User ID (Pings):"
+Gui Add, Edit, x166 y162 w169 h16 vWebhookUserIDInput,% ""
+Gui Font, s7.4 norm
+Gui Add, CheckBox, vWebhookInventoryScreenshots x161 y182 w130 h26 cWhite, % "Inventory Screenshots (mins)"
+Gui Add, Edit, x294 y186 w50 h18
+Gui Add, UpDown, vInvScreenshotinterval Range1-1440
+
+Gui Font, s10 w600
+Gui Add, GroupBox, x356 y40 w128 h50 vStatusOtherGroup cWhite, Other
+Gui Font, s9 norm
+Gui Add, CheckBox, vStatusBarCheckBox x366 y63 w110 h20 cWhite, % " Enable Status Bar"
+
+Gui Font, s9 w600
+Gui Add, GroupBox, x356 y90 w128 h120 vRollDetectionGroup cWhite, Roll Detection
+Gui Font, s8 norm
+Gui Add, Button, gRollDetectionHelpClick vRollDetectionHelpButton x458 y99 w23 h23, ?
+Gui Add, Text, vWebhookRollSendHeader x365 y110 w110 h16 BackgroundTrans cWhite, % "Send Minimum:"
+Gui Add, Edit, vWebhookRollSendInput x370 y126 w102 h18, 10000
+Gui Add, Text, vWebhookRollPingHeader x365 y146 w110 h16 BackgroundTrans cWhite, % "Ping Minimum:"
+Gui Add, Edit, vWebhookRollPingInput x370 y162 w102 h18, 100000
+Gui Add, CheckBox, vWebhookRollImageCheckBox gWebhookRollImageCheckBoxClick x365 y183 w100 h18 cWhite, Aura Images
+
+; settings tab
+Gui Tab, 4
+Gui Font, s10 w600
+Gui Add, GroupBox, x16 y40 w467 h65 vGeneralSettingsGroup cWhite, General
+Gui Font, s9 norm
+Gui Add, CheckBox, vVIPCheckBox x32 y58 w150 h22 cWhite, % " VIP Gamepass Owned"
+Gui Add, CheckBox, vAzertyCheckBox x222 y58 w200 h22 cWhite, % " AZERTY Keyboard Layout"
+Gui Add, Text, x222 y82 w200 h18 cWhite, % "Collection Back Button Y Offset:"
+Gui Add, Edit, x396 y81 w50 h18
+Gui Add, UpDown, vBackOffsetUpDown Range-500-500, 0
+Gui Add, Button, vImportSettingsButton gImportSettingsClick x30 y80 w130 h20, Import Settings
+
+Gui Font, s10 w600
+Gui Add, GroupBox, x16 y105 w267 h105 vReconnectSettingsGroup cWhite, Reconnect
+Gui Font, s9 norm
+Gui Add, CheckBox, vReconnectCheckBox x32 y127 w150 h16 cWhite, % "Enable Reconnect"
+Gui Add, Text, x24 y148 w100 h20 vPrivateServerInputHeader BackgroundTrans cWhite, Private Server Link:
+Gui Add, Edit, x25 y167 w235 h20 vPrivateServerInput,% ""
+
+
+themeOptions := "Light||Dark"
+Gui Font, s10 w600
+Gui Add, GroupBox, x290 y105 w193 h105 vThemeSettingsGroup cWhite, Theme
+Gui Font, s9 norm
+Gui Add, DropDownList, x300 y127 w165 h10 vThemeDropdown R9, % themeOptions
+Gui Add, Text, vThemeHelp x300 y155 w150 h32 BackgroundTrans cWhite, % "Restart the macro to see the changes."
+}
+if (savedTheme = 0) {
+    GuiControl,ChooseString, ThemeDropdown, Light
+} else {
+    GuiControl, ChooseString, ThemeDropdown, Dark
+}
 
 
 ; credits tab
 Gui Tab, 5
 Gui Font, s10 w600
-Gui Add, GroupBox, x16 y40 w231 h133 vCreditsGroup -Theme +0x50000007, The Creator
+Gui Add, GroupBox, x16 y40 w231 h133 vCreditsGroup cWhite, The Creator
 Gui Add, Picture, w75 h75 x23 y62, % mainDir "images\pfp.png"
 Gui Font, s12 w600
-Gui Add, Text, x110 y57 w130 h22,BuilderDolphin
+Gui Add, Text, x110 y57 w130 h22 cWhite,BuilderDolphin
 Gui Font, s8 norm italic
-Gui Add, Text, x120 y78 w80 h18,(dolphin)
+Gui Add, Text, x120 y78 w80 h18 cWhite,(dolphin)
 Gui Font, s8 norm
-Gui Add, Text, x115 y95 w124 h40,"This was supposed to be a short project to learn AHK..."
+Gui Add, Text, x115 y95 w124 h40 cWhite,"This was supposed to be a short project to learn AHK..."
 Gui Font, s8 norm
-Gui Add, Text, x28 y145 w200 h32 BackgroundTrans,% "More to come soon perhaps..."
+Gui Add, Text, x28 y145 w200 h32 BackgroundTrans cWhite,% "More to come soon perhaps..."
 Gui Add, Button, x28 y177 w206 h32 gMoreCreditsClick,% "More Credits"
 
 Gui Font, s10 w600
-Gui Add, GroupBox, x252 y40 w231 h90 vCreditsGroup2 -Theme +0x50000007, The Inspiration
-Gui Add, Picture, w60 h60 x259 y62, % mainDir "images\auryn.ico"
+Gui Add, GroupBox, x252 y40 w231 h90 vCreditsGroup2 cWhite, The Inspiration
+Gui Add, Picture, w60 h60 x259 y62 cWhite, % mainDir "images\auryn.ico"
 Gui Font, s8 norm
-Gui Add, Text, x326 y59 w150 h68,% "Natro Macro, a macro for Bee Swarm Simulator has greatly inspired this project and has helped me create this project overall."
+Gui Add, Text, x326 y59 w150 h68 cWhite,% "Natro Macro, a macro for Bee Swarm Simulator has greatly inspired this project and has helped me create this project overall."
 
 Gui Font, s10 w600
-Gui Add, GroupBox, x252 y130 w231 h80 vCreditsGroup3 -Theme +0x50000007, Other
+Gui Add, GroupBox, x252 y130 w231 h80 vCreditsGroup3 cWhite, Other
 Gui Font, s9 norm
-Gui Add, Link, x268 y150 w200 h55, Join the <a href="https://discord.gg/DYUqwJchuV">Discord Server</a>! (Community)`n`nVisit the <a href="https://github.com/BuilderDolphin/dolphSol-Macro">GitHub</a>! (Updates + Versions)
+Gui Add, Link, x268 y150 w200 h55 cWhite, Join the <a href="https://discord.gg/DYUqwJchuV">Discord Server</a>! (Community)`n`nVisit the <a href="https://github.com/BuilderDolphin/dolphSol-Macro">GitHub</a>! (Updates + Versions)
 
 Gui Show, % "w500 h254 x" clamp(options.WindowX,10,A_ScreenWidth-100) " y" clamp(options.WindowY,10,A_ScreenHeight-100), % "dolphSol Macro " version
 
@@ -1798,7 +1967,7 @@ updateUIOptions(){
     } else {
         GuiControl,, PrivateServerInput,% ""
     }
-    
+
     Loop 7 {
         v := options["ItemSpot" . A_Index]
         GuiControl,,CollectSpot%A_Index%CheckBox,%v%
@@ -1846,6 +2015,13 @@ applyNewUIOptions(){
             MsgBox, % "The private server link you provided is a share link, instead of a privateServerLinkCode link. To get the code link, paste the share link into your browser and run it. This should convert the link to a privateServerLinkCode link. Copy and paste the converted link into the Private Server setting to fix this issue.`n`nThe link should look like: https://www.roblox.com/games/15532962292/Sols-RNG?privateServerLinkCode=..."
         }
         options.PrivateServerId := serverId ""
+    }
+    
+    GuiControlGet, rValue,,ThemeDropdown
+    if(rValue = "Light"){
+        options.Theme := 0
+    } else {
+        options.Theme := 1
     }
 
     GuiControlGet, webhookLink,,WebhookInput
