@@ -198,7 +198,7 @@ alignCamera(){
     clickMenuButton(2)
     Sleep, 500
     
-    MouseMove, % rX + rW*0.15, % rY + 30 + rH*0.05 + options.BackOffset
+    MouseMove, % rX + rW*0.15, % rY + 10 + rH*0.05 + options.BackOffset
     Sleep, 200
     MouseClick
     Sleep, 200
