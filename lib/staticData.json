@@ -1,16 +1,13 @@
 [{
     "announcement":"v1.4.0 has fully released! Please remember to have your camera mode on the default option before starting the macro.",
     "updateInfo": {
-        "latestVersion":"v1.4.0",
+        "latestVersion":"v1.5.0",
         "versionLink":"https://github.com/BuilderDolphin/dolphSol-Macro/releases/latest",
-        "updateNotes":"- Full release of the 1.4.0 version!"
+        "updateNotes":"- v1.5.0 is currently in testing, so the auto update will show this. The test/unnoficial versions are currently on Discord."
     },
+    "biomes": ["Windy", "Rainy", "Snowy", "Hell", "Starfall", "Corruption", "Null", "Glitched"],
+    "scheduleItems": ["Strange Controller", "Biome Randomizer", "Lucky Potion", "Speed Potion", "Fortune Potion I", "Fortune Potion II", "Fortune Potion III", "Haste Potion I", "Haste Potion II", "Haste Potion III", "Heavenly Potion I", "Heavenly Potion II"],
     "stars": {
-        "495104": {
-            "name": "Undead",
-            "image": "https://static.wikia.nocookie.net/sol-rng/images/e/eb/UndeadAura.gif",
-            "rarity": 12000
-        },
         "12505855": {
             "name": "Comet [From Starfall]",
             "image": "https://static.wikia.nocookie.net/sol-rng/images/2/21/CometAura.gif",
@@ -26,41 +23,10 @@
                 }
             ]
         },
-        "7881162": {
-            "name": "Corrosive",
-            "image": "https://static.wikia.nocookie.net/sol-rng/images/9/94/Corrosive.gif",
-            "rarity": 12000,
-            "cornerColor": 0,
-            "mutations": [
-                {
-                    "name": "Astral [From Corruption]",
-                    "image": "https://static.wikia.nocookie.net/sol-rng/images/c/ca/Astral_gif.gif",
-                    "rarity": 267200,
-                    "requirements": {
-                        "is100k": 1
-                    }
-                },
-                {
-                    "name": "Astral",
-                    "image": "https://static.wikia.nocookie.net/sol-rng/images/c/ca/Astral_gif.gif",
-                    "rarity": 1336000,
-                    "cornerColor": 0,
-                    "requirements": {
-                        "is1m": 1
-                    }
-                }
-            ]
-        },
         "16728645": {
             "name": "Rage : Heated",
             "image": "https://static.wikia.nocookie.net/sol-rng/images/1/14/RageHeatedAura.gif",
             "rarity": 12800
-        },
-        "1315860": {
-            "name": "Ink : Leak",
-            "image": "https://static.wikia.nocookie.net/sol-rng/images/5/5f/Ink-_Leak_stuffversion_2.png",
-            "rarity": 14000,
-            "cornerColor": 0
         },
         "16777215": {
             "name": "Powered",
@@ -70,7 +36,18 @@
         "5015039": {
             "name": "Aquatic",
             "image": "https://static.wikia.nocookie.net/sol-rng/images/a/a9/AquaticAura.gif",
-            "rarity": 40000
+            "rarity": 40000,
+            "mutations": [
+                {
+                    "name": "Aquatic Flame",
+                    "image": "https://static.wikia.nocookie.net/sol-rng/images/7/7f/Aqua_flame_new_gif.gif",
+                    "rarity": 4000000,
+                    "cornerColor":3289650,
+                    "requirements": {
+                        "is1m": 1
+                    }
+                }
+            ]
         },
         "16751631": {
             "name": "Solar",
@@ -118,6 +95,12 @@
                 }
             ]
         },
+        "5466879": {
+            "name": "Starlight",
+            "image": "https://static.wikia.nocookie.net/sol-rng/images/2/22/StarlightCollection.gif",
+            "rarity": 50000,
+            "biome": {"name": "Starfall", "factor":10}
+        },
         "16754944": {
             "name": "Flushed : Lobotomy",
             "image": "https://static.wikia.nocookie.net/sol-rng/images/8/84/Flushed_Lobotomy_Collection.png",
@@ -134,11 +117,6 @@
             "rarity": 73500,
             "biome": {"name": "Snowy", "factor":3}
         },
-        "5466879": {
-            "name": "Starlight",
-            "image": "https://static.wikia.nocookie.net/sol-rng/images/2/22/StarlightCollection.gif",
-            "rarity": 50000
-        },
         "11035135": {
             "name": "Hazard : Rays",
             "image": "https://static.wikia.nocookie.net/sol-rng/images/c/c1/Hazard_Rays.gif",
@@ -149,7 +127,19 @@
             "name": "Stormal",
             "image": "https://static.wikia.nocookie.net/sol-rng/images/8/8b/StormalAuraNight.gif",
             "rarity": 90000,
-            "biome": {"name": "Windy", "factor":3}
+            "biome": {"name": "Windy", "factor":3},
+            "mutations": [
+                {
+                    "name": "Stormal : Hurricane",
+                    "image": "https://static.wikia.nocookie.net/sol-rng/images/0/04/Stormal_Hurricane_Curation.gif",
+                    "rarity": 13500000,
+                    "biome": {"name": "Windy", "factor":3},
+                    "cornerColor":263172,
+                    "requirements": {
+                        "is1m": 1
+                    }
+                }
+            ]
         },
         "3721688": {
             "name": "Exotic",
@@ -180,50 +170,73 @@
         "2447103": {
             "name": "BOUNDED",
             "image": "https://static.wikia.nocookie.net/sol-rng/images/5/52/BoundedAuraNight.gif",
-            "rarity": 200000
+            "rarity": 200000,
+            "mutations": [
+                {
+                    "name": "BOUNDED : UNBOUND",
+                    "image": "https://static.wikia.nocookie.net/sol-rng/images/6/65/Unbound_E7_Collection2.gif",
+                    "rarity": 2000000,
+                    "cornerColor":3289650,
+                    "requirements": {
+                        "is1m": 1
+                    }
+                }
+            ]
+        },
+        "7881162": {
+            "name": "Astral",
+            "image": "https://static.wikia.nocookie.net/sol-rng/images/c/ca/Astral_gif.gif",
+            "rarity": 267200
+        },
+        "7880906": {
+            "name": "Astral [BT]",
+            "image": "https://static.wikia.nocookie.net/sol-rng/images/c/ca/Astral_gif.gif",
+            "rarity": 1336000,
+            "cornerColor": 1117213
         },
         "9937663": {
             "name": "Celestial",
             "image": "https://static.wikia.nocookie.net/sol-rng/images/6/60/CelestialAura.gif",
-            "rarity": 350000
+            "rarity": 350000,
+            "mutations": [
+                {
+                    "name": "CELESTIAL : DIVINE",
+                    "image": "https://static.wikia.nocookie.net/sol-rng/images/c/c4/CelestialDivineCollection.gif",
+                    "rarity": 7000000,
+                    "cornerColor":2297906,
+                    "requirements": {
+                        "is1m": 1
+                    }
+                }
+            ]
         },
         "2627218": {
             "name": "Kyawthuite",
             "image": "https://static.wikia.nocookie.net/sol-rng/images/3/3b/Kyawthuite_Collection.gif",
             "rarity": 850000
         },
-        "7773439": {
+        "7313407": {
             "name": "Arcane",
             "image": "https://static.wikia.nocookie.net/sol-rng/images/8/86/Arcane_Gif_25Fps.gif",
             "rarity": 1000000,
-            "cornerColor": 3355443
+            "cornerColor": 3289650
         },
         "8324736": {
             "name": "Magnetic : Reverse Polarity",
             "image": "https://static.wikia.nocookie.net/sol-rng/images/c/c2/MagneticReversePolarityCollection.gif",
             "rarity": 1024000
         },
-        "3223857": {
-            "name": "Undefined",
-            "image": "https://static.wikia.nocookie.net/sol-rng/images/f/ff/UndefinedAuraNight.gif",
-            "rarity": 1111000
-        },
-        "3104511": {
-            "name": "BOUNDED : UNBOUND",
-            "image": "https://static.wikia.nocookie.net/sol-rng/images/1/1b/Unbound_In-Game.gif",
-            "rarity": 2000000,
-            "cornerColor": 3355443
-        },
-        "5794559": {
+        "5399551": {
             "name": "Gravitational",
             "image": "https://static.wikia.nocookie.net/sol-rng/images/6/62/Gravitationalgif.gif",
             "rarity": 2000000,
-            "cornerColor": 3355443
+            "cornerColor": 3289650
         },
-        "5411071": {
+        "5016575": {
             "name": "Virtual",
             "image": "https://static.wikia.nocookie.net/sol-rng/images/2/20/Virtual.gif",
-            "rarity": 2500000
+            "rarity": 2500000,
+            "cornerColor": 3289650
         },
         "943242": {
             "name": "Poseidon",
@@ -231,12 +244,6 @@
             "rarity": 4000000,
             "biome": {"name": "Rainy", "factor":4},
             "cornerColor": 141352
-        },
-        "5540095": {
-            "name": "Aquatic : Flame",
-            "image": "https://static.wikia.nocookie.net/sol-rng/images/7/7f/Aqua_flame_new_gif.gif",
-            "rarity": 4000000,
-            "cornerColor": 3355443
         },
         "16775891": {
             "name": "Zeus",
@@ -247,17 +254,8 @@
         "5325567": {
             "name": "Galaxy",
             "image": "https://static.wikia.nocookie.net/sol-rng/images/f/f8/Galaxy_Aura.gif",
-            "rarity": 5000000,
-            "mutations": [
-                {
-                    "name": "Galaxy [From Starfall]",
-                    "image": "https://static.wikia.nocookie.net/sol-rng/images/f/f8/Galaxy_Aura.gif",
-                    "rarity": 500000,
-                    "requirements": {
-                        "is100k": 1
-                    }
-                }
-            ]
+            "biome": {"name": "Starfall", "factor":10},
+            "rarity": 5000000
         },
         "5390591": {
             "name": "Twilight",
@@ -265,11 +263,12 @@
             "rarity": 6000000,
             "mutations": [
                 {
-                    "name": "Twilight [From Nighttime]",
-                    "image": "https://static.wikia.nocookie.net/sol-rng/images/4/4d/RobloxPlayerBeta_1Wn7Ej3k18.gif",
-                    "rarity": 600000,
+                    "name": "Twilight : Iridescent Memory",
+                    "image": "https://static.wikia.nocookie.net/sol-rng/images/f/fc/Twilight_-_Iridescent_Memory_Collection.gif",
+                    "rarity": 60000000,
+                    "cornerColor":2367282,
                     "requirements": {
-                        "is100k": 1
+                        "is1m": 1
                     }
                 }
             ]
@@ -286,24 +285,25 @@
             "rarity": 7500000,
             "cornerColor": 3355443
         },
-        "16744319": {
+        "16744576": {
             "name": "STARSCOURGE",
             "image": "https://static.wikia.nocookie.net/sol-rng/images/a/a4/StarscourgeAura.gif",
             "rarity": 10000000,
             "biome": {"name": "Starfall", "factor":10},
-            "cornerColor": 3354929
+            "cornerColor": 3288880
         },
-        "8562687": {
+        "7642879": {
             "name": "Sailor",
             "image": "https://static.wikia.nocookie.net/sol-rng/images/0/06/Sailor_Aura.png",
             "rarity": 12000000,
-            "biome": {"name": "Rainy", "factor":4}
+            "biome": {"name": "Rainy", "factor":4},
+            "cornerColor": 3289650
         },
-        "8759551": {
+        "7247615": {
             "name": "Arcane : Legacy OR Arcane : Dark (1/2)",
             "image": "https://static.wikia.nocookie.net/sol-rng/images/3/34/ArcaneLegacyAura.gif",
             "rarity": 15000000,
-            "cornerColor": 10000536
+            "cornerColor": 9671571
         },
         "16722992": {
             "name": "CHROMATIC",
@@ -322,6 +322,31 @@
             "image": "https://static.wikia.nocookie.net/sol-rng/images/4/43/RobloxPlayerBeta_Ie55pSxe44.gif",
             "rarity": 50000000,
             "cornerColor": 3184771
+        },
+        "4424270": {
+            "name": "Sailor : Flying Dutchman",
+            "image": "https://static.wikia.nocookie.net/sol-rng/images/e/e4/Sailor_Flying_Dutchman_Collection_E8.gif",
+            "rarity": 80000000,
+            "biome": {"name": "Rainy", "factor":4}
+        },
+        "8328728": {
+            "name": "BLOODLUST",
+            "image": "https://static.wikia.nocookie.net/sol-rng/images/f/f9/BloodlustInCollection.gif",
+            "rarity": 300000000,
+            "biome": {"name": "Hell", "factor":6},
+            "cornerColor": 327680
+        },
+        "16740721": {
+            "name": "Watermelon",
+            "image": "https://static.wikia.nocookie.net/sol-rng/images/5/56/Watermelon_Collection.png",
+            "rarity": 320000
+        },
+        "3906303": {
+            "name": "Shard Surfer",
+            "image": "https://static.wikia.nocookie.net/sol-rng/images/1/1f/Image_%2861%29.png",
+            "rarity": 225000000,
+            "biome": {"name": "Snowy", "factor":3},
+            "cornerColor": 2123672
         }
     }
 }]
