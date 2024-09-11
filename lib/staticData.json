@@ -5,7 +5,7 @@
         "versionLink":"https://github.com/BuilderDolphin/dolphSol-Macro/releases/latest",
         "updateNotes":"- v1.5.0 is currently in testing, so the auto update will show this. The test/unnoficial versions are currently on Discord."
     },
-    "biomes": ["Windy", "Rainy", "Snowy", "Hell", "Starfall", "Corruption", "Null", "Glitched"],
+    "biomes": ["Normal", "Windy", "Rainy", "Snowy", "Hell", "Starfall", "Corruption", "Null", "Glitched"],
     "scheduleItems": ["Strange Controller", "Biome Randomizer", "Lucky Potion", "Speed Potion", "Fortune Potion I", "Fortune Potion II", "Fortune Potion III", "Haste Potion I", "Haste Potion II", "Haste Potion III", "Heavenly Potion I", "Heavenly Potion II"],
     "stars": {
         "12505855": {
